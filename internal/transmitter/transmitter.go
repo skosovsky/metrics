@@ -183,14 +183,18 @@ func (*Metrics) sendRequest(urls []string) {
 	}
 
 	for _, url := range urls {
-		_, err := client.Post(url, contentType, http.NoBody) //nolint:bodyclose,noctx // no body, TODO: добавить контекст, прокинуть от запуска
+		response, err := client.Post(url, contentType, http.NoBody) //nolint:noctx //TODO: добавить контекст, прокинуть от запуска
 		if err != nil {
 			countErr++
-			log.Error("Failed to send request: ",
+			log.Error("Failed to send request",
 				log.ErrAttr(err),
 				log.StringAttr("url", url),
 				log.IntAttr("count errors", countErr),
 			)
+		}
+		err = response.Body.Close()
+		if err != nil {
+			log.Error("Failed to close response body", log.ErrAttr(err))
 		}
 	}
 
