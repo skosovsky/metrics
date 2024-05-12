@@ -279,6 +279,7 @@ linters-settings:
       - id
       - ch
       - fn
+      - tt
 
     # Optional list of variable declarations that should be ignored completely. (defaults to empty list)
     # Entries must be in one of the following forms (see below for examples):

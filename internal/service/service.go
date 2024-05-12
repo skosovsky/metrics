@@ -16,10 +16,10 @@ var (
 )
 
 type MetricsGetter struct {
-	store store.Database
+	store store.Store
 }
 
-func NewMetricsGetterService(store store.Database) MetricsGetter {
+func NewMetricsGetterService(store store.Store) MetricsGetter {
 	return MetricsGetter{store: store}
 }
 

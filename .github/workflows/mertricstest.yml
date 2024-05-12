@@ -59,7 +59,8 @@ jobs:
 
       - name: Build server binary
         run: |
-          go build -buildvcs=false -o cmd/server/server metrics/cmd/server
+          cd cmd/server
+          go build -buildvcs=false -o server
 
       - name: "Code increment #1"
         if: |
