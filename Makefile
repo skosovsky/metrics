@@ -35,6 +35,10 @@ test2: ## Test increment #2
 	@echo "Testing ${APP} - increment 2..."
 	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration2[AB]*$$" -source-path=. -agent-binary-path=cmd/agent/agent
 
+test3: ## Test increment #3
+	@echo "Testing ${APP} - increment 3..."
+	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration3[AB]*$$" -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server
+
 run: ## Run an application
 	@echo "Starting ${APP} ..."
 	go run main.go
