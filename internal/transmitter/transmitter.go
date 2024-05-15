@@ -155,11 +155,11 @@ func (m *Metrics) Report() {
 }
 
 func (m *Metrics) prepareUrls() []string {
-	hostPort := m.config.Host + ":" + strconv.Itoa(m.config.Port)
+	// hostPort := m.config.Host + ":" + strconv.Itoa(m.config.Port)
 	urls := make([]string, 0, len(m.gauges)+len(m.PollCount))
 
 	for _, gauge := range m.gauges {
-		url := "http://" + hostPort + "/update" + "/gauge/" + gauge.Name + "/" + strconv.FormatFloat(gauge.Value, 'f', -1, 64)
+		url := "http://" + m.config.Address + "/update" + "/gauge/" + gauge.Name + "/" + strconv.FormatFloat(gauge.Value, 'f', -1, 64)
 		urls = append(urls, url)
 	}
 
@@ -170,7 +170,7 @@ func (m *Metrics) prepareUrls() []string {
 			continue
 		}
 
-		url := "http://" + hostPort + "/update" + "/counter/" + poll.Name + "/" + strconv.FormatInt(poll.Value, 10)
+		url := "http://" + m.config.Address + "/update" + "/counter/" + poll.Name + "/" + strconv.FormatInt(poll.Value, 10)
 		urls = append(urls, url)
 	}
 

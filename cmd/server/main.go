@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 
 	"github.com/joho/godotenv"
 
@@ -69,14 +68,14 @@ func loadEnv() {
 func setEnvDefault() { // TODO: Обновить или удалить уже
 	cfg := config.ReceiverConfig{} //nolint:exhaustruct // long struct
 	cfg.App.Mode = "test"
-	cfg.Receiver.Host = "localhost"
-	cfg.Receiver.Port = 8080
+	// cfg.Receiver.Host = "localhost"
+	// cfg.Receiver.Port = 8080
 	cfg.Store.DBDriver = "memory"
 	cfg.Store.DBAddress = "map"
 
 	_ = os.Setenv("APP_MODE", cfg.App.Mode)
-	_ = os.Setenv("SRV_HOST", cfg.Receiver.Host)
-	_ = os.Setenv("SRV_PORT", strconv.Itoa(cfg.Receiver.Port))
+	// _ = os.Setenv("SRV_HOST", cfg.Receiver.Host)
+	// _ = os.Setenv("SRV_PORT", strconv.Itoa(cfg.Receiver.Port))
 	_ = os.Setenv("DB_DRIVER", cfg.Store.DBDriver)
 	_ = os.Setenv("DB_ADDRESS", cfg.Store.DBAddress)
 

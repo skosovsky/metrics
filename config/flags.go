@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 )
 
@@ -17,11 +16,11 @@ type Value interface {
 	Set(string) error
 }
 
-func (s *Receiver) String() string {
-	return s.Host + ":" + strconv.Itoa(s.Port)
+func (r *Receiver) String() string {
+	return r.Address
 }
 
-func (s *Receiver) Set(flagValue string) error {
+func (r *Receiver) Set(flagValue string) error {
 	const flagParts = 2
 
 	flagValues := strings.Split(flagValue, ":")
@@ -30,19 +29,21 @@ func (s *Receiver) Set(flagValue string) error {
 		return fmt.Errorf("parsing address error - %s: %w", flagValue, ErrInvalidReceiverAddress)
 	}
 
-	port, err := strconv.Atoi(flagValues[1])
-	if err != nil {
-		return fmt.Errorf("parsing port error - %s: %w", flagValue, ErrInvalidReceiverPort)
-	}
+	// port, err := strconv.Atoi(flagValues[1])
+	// if err != nil {
+	// 	return fmt.Errorf("parsing port error - %r: %w", flagValue, ErrInvalidReceiverPort)
+	// }
+	//
+	// r.Port = port
+	// r.Host = flagValues[0]
 
-	s.Port = port
-	s.Host = flagValues[0]
+	r.Address = flagValues[0] + ":" + flagValues[1]
 
 	return nil
 }
 
 func (t *Transmitter) String() string {
-	return t.Host + ":" + strconv.Itoa(t.Port)
+	return t.Address
 }
 
 func (t *Transmitter) Set(flagValue string) error {
@@ -54,13 +55,15 @@ func (t *Transmitter) Set(flagValue string) error {
 		return fmt.Errorf("parsing address error - %s: %w", flagValue, ErrInvalidReceiverAddress)
 	}
 
-	port, err := strconv.Atoi(flagValues[1])
-	if err != nil {
-		return fmt.Errorf("parsing port error - %s: %w", flagValue, ErrInvalidReceiverPort)
-	}
+	// port, err := strconv.Atoi(flagValues[1])
+	// if err != nil {
+	//	return fmt.Errorf("parsing port error - %s: %w", flagValue, ErrInvalidReceiverPort)
+	// }
+	//
+	// t.Port = port
+	// t.Host = flagValues[0]
 
-	t.Port = port
-	t.Host = flagValues[0]
+	t.Address = flagValues[0] + ":" + flagValues[1]
 
 	return nil
 }

@@ -3,7 +3,6 @@ package config
 import (
 	"flag"
 	"fmt"
-	"time"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/go-playground/validator/v10"
@@ -15,15 +14,17 @@ type (
 	}
 
 	Receiver struct {
-		Host string `env:"RCV_HOST" validate:"required"`
-		Port int    `env:"RCV_PORT" validate:"required,min=0,max=65535"`
+		Address string `env:"ADDRESS" validate:"url"`
+		// Host string `env:"RCV_HOST"       validate:"required"`
+		// Port int    `env:"RCV_PORT"       validate:"required,min=0,max=65535"`
 	}
 
 	Transmitter struct {
-		Host           string        `env:"TSM_HOST"            validate:"required"`
-		Port           int           `env:"TSM_PORT"            validate:"required,min=0,max=65535"`
-		ReportInterval time.Duration `env:"TSM_REPORT_INTERVAL" validate:"required,min=1s"`
-		PollInterval   time.Duration `env:"TSM_POLL_INTERVAL"   validate:"required,min=1s"`
+		Address        string `env:"ADDRESS"         validate:"url"`
+		ReportInterval int    `env:"REPORT_INTERVAL" validate:"min=1"`
+		PollInterval   int    `env:"POLL_INTERVAL"   validate:"min=1"`
+		// Host        string `env:"TSM_HOST"        validate:"required"`
+		// Port        int    `env:"TSM_PORT"        validate:"required,min=0,max=65535"`
 	}
 
 	Store struct {
@@ -46,12 +47,7 @@ type (
 func NewReceiverConfig() (ReceiverConfig, error) {
 	var config ReceiverConfig
 
-	if err := env.Parse(&config); err != nil {
-		return ReceiverConfig{}, fmt.Errorf("failed to parse config: %w", err)
-	}
-
 	var configReceiver Receiver
-
 	err := configReceiver.Set("localhost:8080")
 	if err != nil {
 		return ReceiverConfig{}, fmt.Errorf("failed to set default value: %w", err)
@@ -61,6 +57,10 @@ func NewReceiverConfig() (ReceiverConfig, error) {
 	flag.Parse()
 
 	config.Receiver = configReceiver
+
+	if err = env.Parse(&config); err != nil {
+		return ReceiverConfig{}, fmt.Errorf("failed to parse config: %w", err)
+	}
 
 	if err = config.validate(); err != nil {
 		return ReceiverConfig{}, fmt.Errorf("failed to validate config: %w", err)
@@ -83,10 +83,6 @@ func (c ReceiverConfig) validate() error {
 func NewTransmitterConfig() (TransmitterConfig, error) {
 	var config TransmitterConfig
 
-	if err := env.Parse(&config); err != nil {
-		return TransmitterConfig{}, fmt.Errorf("failed to parse config: %w", err)
-	}
-
 	var configTransmitter Transmitter
 	var pollInterval int
 	var reportInterval int
@@ -99,11 +95,16 @@ func NewTransmitterConfig() (TransmitterConfig, error) {
 	flag.Var(&configTransmitter, "a", "Server address host:port")
 	flag.IntVar(&pollInterval, "p", 2, "Polling interval in seconds")
 	flag.IntVar(&reportInterval, "r", 10, "Reporting interval in seconds")
+
 	flag.Parse()
 
-	configTransmitter.PollInterval = time.Duration(pollInterval) * time.Second
-	configTransmitter.ReportInterval = time.Duration(reportInterval) * time.Second
+	configTransmitter.PollInterval = pollInterval
+	configTransmitter.ReportInterval = reportInterval
 	config.Transmitter = configTransmitter
+
+	if err = env.Parse(&config); err != nil {
+		return TransmitterConfig{}, fmt.Errorf("failed to parse config: %w", err)
+	}
 
 	if err = config.validate(); err != nil {
 		return TransmitterConfig{}, fmt.Errorf("failed to validate config: %w", err)

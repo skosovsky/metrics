@@ -12,16 +12,18 @@ help: Makefile ## Show this help
 build-apps: ## Build an application
 	@echo "Building ${APP} ..."
 	mkdir -p build
+	go mod tidy
+	go generate ./...
 	go build -o build/server metrics/cmd/server
 	go build -o build/agent metrics/cmd/agent
-	go generate ./...
 
 .PHONY: build-test
 build-test: ## Build an application
 	@echo "Building ${APP} ..."
+	go mod tidy
+	go generate ./...
 	cd cmd/server && go build -buildvcs=false -o server
 	cd cmd/agent && go build -buildvcs=false  -o agent
-	go generate ./...
 
 test-static: ## Test static
 	@echo "Testing ${APP} - static..."
@@ -42,6 +44,10 @@ test3: ## Test increment #3
 test4: ## Test increment #4
 	@echo "Testing ${APP} - increment 4..."
 	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration4$$" -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8001 -source-path=.
+
+test5: ## Test increment #5
+	@echo "Testing ${APP} - increment 5..."
+	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration5$$" -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8002 -source-path=.
 
 run: ## Run an application
 	@echo "Starting ${APP} ..."

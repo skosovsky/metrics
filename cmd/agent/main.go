@@ -23,10 +23,10 @@ func main() {
 	}
 	log.Info("config", log.AnyAttr("cfg", fmt.Sprint(cfg)))
 
-	tickerReport := time.NewTicker(cfg.ReportInterval)
+	tickerReport := time.NewTicker(time.Duration(cfg.ReportInterval) * time.Second)
 	defer tickerReport.Stop()
 
-	tickerPool := time.NewTicker(cfg.PollInterval)
+	tickerPool := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
 	defer tickerPool.Stop()
 
 	statistics := transmitter.NewMetrics(cfg)
