@@ -22,7 +22,7 @@ func main() {
 	loadEnv()
 	logAppInfo()
 
-	cfg, err := config.NewConfig()
+	cfg, err := config.NewReceiverConfig()
 	if err != nil {
 		log.Fatal("cfg", log.ErrAttr(err))
 	}
@@ -33,7 +33,7 @@ func main() {
 		log.Fatal("store", log.ErrAttr(err))
 	}
 
-	metricsGetter := service.NewMetricsGetterService(db)
+	metricsGetter := service.NewMetricsGetterService(db, cfg)
 
 	ctx := context.WithValue(context.Background(), receiver.KeyServiceCtx{}, metricsGetter)
 
@@ -66,17 +66,17 @@ func loadEnv() {
 	}
 }
 
-func setEnvDefault() {
-	cfg := config.Config{} //nolint:exhaustruct // long struct
+func setEnvDefault() { // TODO: Обновить или удалить уже
+	cfg := config.ReceiverConfig{} //nolint:exhaustruct // long struct
 	cfg.App.Mode = "test"
-	cfg.Server.Host = "localhost"
-	cfg.Server.Port = 8080
+	cfg.Receiver.Host = "localhost"
+	cfg.Receiver.Port = 8080
 	cfg.Store.DBDriver = "memory"
 	cfg.Store.DBAddress = "map"
 
 	_ = os.Setenv("APP_MODE", cfg.App.Mode)
-	_ = os.Setenv("SRV_HOST", cfg.Server.Host)
-	_ = os.Setenv("SRV_PORT", strconv.Itoa(cfg.Server.Port))
+	_ = os.Setenv("SRV_HOST", cfg.Receiver.Host)
+	_ = os.Setenv("SRV_PORT", strconv.Itoa(cfg.Receiver.Port))
 	_ = os.Setenv("DB_DRIVER", cfg.Store.DBDriver)
 	_ = os.Setenv("DB_ADDRESS", cfg.Store.DBAddress)
 

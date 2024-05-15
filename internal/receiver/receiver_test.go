@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"metrics/config"
 	"metrics/internal/receiver"
 	"metrics/internal/service"
 	"metrics/internal/store"
@@ -42,7 +43,8 @@ func TestRouting(t *testing.T) { // TODO: понять как же мы тут �
 	}
 
 	db, _ := store.NewDummyStore()
-	metricsGetter := service.NewMetricsGetterService(db)
+	cfg, _ := config.NewReceiverConfig()
+	metricsGetter := service.NewMetricsGetterService(db, cfg)
 	ctx := context.WithValue(context.Background(), receiver.KeyServiceCtx{}, metricsGetter)
 
 	server := httptest.NewUnstartedServer(receiver.Handler())

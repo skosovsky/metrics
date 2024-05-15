@@ -8,29 +8,29 @@ import (
 
 var ErrInfoUnknown = errors.New("app name or revision unknown")
 
-type App struct {
+type Application struct {
 	name     string
 	revision string
 }
 
-func NewAppInfo() (App, error) {
-	var app App
+func NewAppInfo() (Application, error) {
+	var application Application
 
 	if info, ok := debug.ReadBuildInfo(); ok {
-		app.name = strings.ToUpper(info.Main.Path)
+		application.name = strings.ToUpper(info.Main.Path)
 
 		for _, setting := range info.Settings {
 			if setting.Key == "vcs.revision" {
-				app.revision = setting.Value
+				application.revision = setting.Value
 
 				break
 			}
 		}
 	}
 
-	if app.name == "" || app.revision == "" {
-		return App{}, ErrInfoUnknown
+	if application.name == "" || application.revision == "" {
+		return Application{}, ErrInfoUnknown
 	}
 
-	return app, nil
+	return application, nil
 }

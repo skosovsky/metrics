@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"metrics/config"
 	"metrics/internal/model"
 	log "metrics/pkg/logger"
 )
@@ -20,9 +21,10 @@ const (
 type Metrics struct {
 	gauges    []model.Gauge
 	PollCount []model.Counter
+	config    config.TransmitterConfig
 }
 
-func NewMetrics() *Metrics {
+func NewMetrics(config config.TransmitterConfig) *Metrics {
 	var metrics Metrics
 	var memMetrics runtime.MemStats
 	runtime.ReadMemStats(&memMetrics)
@@ -54,6 +56,7 @@ func NewMetrics() *Metrics {
 		model.Gauge{Name: "RandomValue", Value: float64(metrics.randomValueGenerate())})
 
 	metrics.PollCount = append(metrics.PollCount, model.Counter{Name: "PollCount", Value: metrics.incrementPollCount()})
+	metrics.config = config
 
 	return &metrics
 }
@@ -142,7 +145,8 @@ func (*Metrics) randomValueGenerate() int64 {
 }
 
 func (m *Metrics) Clear() {
-	*m = *NewMetrics()
+	transmitterConfig := m.config
+	*m = *NewMetrics(transmitterConfig)
 }
 
 func (m *Metrics) Report() {
@@ -151,10 +155,11 @@ func (m *Metrics) Report() {
 }
 
 func (m *Metrics) prepareUrls() []string {
+	hostPort := m.config.Host + ":" + strconv.Itoa(m.config.Port)
 	urls := make([]string, 0, len(m.gauges)+len(m.PollCount))
 
 	for _, gauge := range m.gauges {
-		url := serverHost + "/gauge/" + gauge.Name + "/" + strconv.FormatFloat(gauge.Value, 'f', -1, 64)
+		url := "http://" + hostPort + "/update" + "/gauge/" + gauge.Name + "/" + strconv.FormatFloat(gauge.Value, 'f', -1, 64)
 		urls = append(urls, url)
 	}
 
@@ -165,7 +170,7 @@ func (m *Metrics) prepareUrls() []string {
 			continue
 		}
 
-		url := serverHost + "/counter/" + poll.Name + "/" + strconv.FormatInt(poll.Value, 10)
+		url := "http://" + hostPort + "/update" + "/counter/" + poll.Name + "/" + strconv.FormatInt(poll.Value, 10)
 		urls = append(urls, url)
 	}
 
@@ -191,7 +196,10 @@ func (*Metrics) sendRequest(urls []string) {
 				log.StringAttr("url", url),
 				log.IntAttr("count errors", countErr),
 			)
+
+			return
 		}
+
 		err = response.Body.Close()
 		if err != nil {
 			log.Error("Failed to close response body", log.ErrAttr(err))

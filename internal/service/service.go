@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 
+	"metrics/config"
 	"metrics/internal/model"
 	"metrics/internal/store"
 	log "metrics/pkg/logger"
@@ -16,11 +17,15 @@ var (
 )
 
 type MetricsGetter struct {
-	store store.Store
+	store  store.Store
+	config config.ReceiverConfig
 }
 
-func NewMetricsGetterService(store store.Store) MetricsGetter {
-	return MetricsGetter{store: store}
+func NewMetricsGetterService(store store.Store, config config.ReceiverConfig) MetricsGetter {
+	return MetricsGetter{
+		store:  store,
+		config: config,
+	}
 }
 
 func (m MetricsGetter) AddGauge(gaugeName string, gaugeValue float64) (model.Gauge, error) {
