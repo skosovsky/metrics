@@ -54,10 +54,6 @@ func NewLogger(opts ...Option) *Logger {
 		handler = NewJSONHandler(os.Stdout, options)
 	}
 
-	if config.UseMiddleware {
-		handler = NewHandlerMiddleware(handler)
-	}
-
 	logger := New(handler)
 
 	if config.SetDefault {
@@ -93,13 +89,6 @@ func WithLevel(level string) Option {
 func WithAddSource(addSource bool) Option {
 	return func(opts *Options) {
 		opts.AddSource = addSource
-	}
-}
-
-// WithMiddleware logger option sets the usage middleware.
-func WithMiddleware(useMiddleware bool) Option {
-	return func(opts *Options) {
-		opts.UseMiddleware = useMiddleware
 	}
 }
 

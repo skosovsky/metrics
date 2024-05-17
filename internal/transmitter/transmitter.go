@@ -1,8 +1,11 @@
 package transmitter
 
 import (
-	"math/rand"
+	"errors"
+	"fmt"
+	"math/rand/v2"
 	"net/http"
+	"net/url"
 	"runtime"
 	"strconv"
 	"time"
@@ -14,60 +17,55 @@ import (
 
 const (
 	clientTimeout     = 1 * time.Second
-	serverHost        = "http://localhost:8080/update"
 	criticalErrorRate = 0.5
+	baseProtocol      = "http://"
 )
 
 type Metrics struct {
-	gauges    []model.Gauge
-	PollCount []model.Counter
-	config    config.TransmitterConfig
+	Gauges    []model.Gauge
+	PollCount model.Counter
 }
 
-func NewMetrics(config config.TransmitterConfig) *Metrics {
+func NewMetrics() *Metrics {
 	var metrics Metrics
-	var memMetrics runtime.MemStats
-	runtime.ReadMemStats(&memMetrics)
 
-	metrics.gauges = append(metrics.gauges, model.Gauge{Name: "Alloc", Value: float64(memMetrics.Alloc)},
-		model.Gauge{Name: "BuckHashSys", Value: float64(memMetrics.BuckHashSys)},
-		model.Gauge{Name: "Frees", Value: float64(memMetrics.Frees)},
-		model.Gauge{Name: "GCCPUFraction", Value: memMetrics.GCCPUFraction},
-		model.Gauge{Name: "GCSys", Value: float64(memMetrics.GCSys)},
-		model.Gauge{Name: "HeapAlloc", Value: float64(memMetrics.HeapAlloc)},
-		model.Gauge{Name: "HeapIdle", Value: float64(memMetrics.HeapIdle)},
-		model.Gauge{Name: "HeapInuse", Value: float64(memMetrics.HeapInuse)},
-		model.Gauge{Name: "LastGC", Value: float64(memMetrics.LastGC)},
-		model.Gauge{Name: "Lookups", Value: float64(memMetrics.Lookups)},
-		model.Gauge{Name: "MCacheInuse", Value: float64(memMetrics.MCacheInuse)},
-		model.Gauge{Name: "MCacheSys", Value: float64(memMetrics.MCacheSys)},
-		model.Gauge{Name: "MSpanInuse", Value: float64(memMetrics.MSpanInuse)},
-		model.Gauge{Name: "MSpanSys", Value: float64(memMetrics.MSpanSys)},
-		model.Gauge{Name: "Mallocs", Value: float64(memMetrics.Mallocs)},
-		model.Gauge{Name: "NextGC", Value: float64(memMetrics.NextGC)},
-		model.Gauge{Name: "NumForcedGC", Value: float64(memMetrics.NumForcedGC)},
-		model.Gauge{Name: "NumGC", Value: float64(memMetrics.NumGC)},
-		model.Gauge{Name: "OtherSys", Value: float64(memMetrics.OtherSys)},
-		model.Gauge{Name: "PauseTotalNs", Value: float64(memMetrics.PauseTotalNs)},
-		model.Gauge{Name: "StackInuse", Value: float64(memMetrics.StackInuse)},
-		model.Gauge{Name: "StackSys", Value: float64(memMetrics.StackSys)},
-		model.Gauge{Name: "Sys", Value: float64(memMetrics.Sys)},
-		model.Gauge{Name: "TotalAlloc", Value: float64(memMetrics.TotalAlloc)},
-		model.Gauge{Name: "RandomValue", Value: float64(metrics.randomValueGenerate())})
-
-	metrics.PollCount = append(metrics.PollCount, model.Counter{Name: "PollCount", Value: metrics.incrementPollCount()})
-	metrics.config = config
+	metrics.Gauges = append(metrics.Gauges,
+		model.Gauge{Name: "Alloc", Value: 0.0},
+		model.Gauge{Name: "BuckHashSys", Value: 0.0},
+		model.Gauge{Name: "Frees", Value: 0.0},
+		model.Gauge{Name: "GCCPUFraction", Value: 0.0},
+		model.Gauge{Name: "GCSys", Value: 0.0},
+		model.Gauge{Name: "HeapAlloc", Value: 0.0},
+		model.Gauge{Name: "HeapIdle", Value: 0.0},
+		model.Gauge{Name: "HeapInuse", Value: 0.0},
+		model.Gauge{Name: "LastGC", Value: 0.0},
+		model.Gauge{Name: "Lookups", Value: 0.0},
+		model.Gauge{Name: "MCacheInuse", Value: 0.0},
+		model.Gauge{Name: "MCacheSys", Value: 0.0},
+		model.Gauge{Name: "MSpanInuse", Value: 0.0},
+		model.Gauge{Name: "MSpanSys", Value: 0.0},
+		model.Gauge{Name: "Mallocs", Value: 0.0},
+		model.Gauge{Name: "NextGC", Value: 0.0},
+		model.Gauge{Name: "NumForcedGC", Value: 0.0},
+		model.Gauge{Name: "NumGC", Value: 0.0},
+		model.Gauge{Name: "OtherSys", Value: 0.0},
+		model.Gauge{Name: "PauseTotalNs", Value: 0.0},
+		model.Gauge{Name: "StackInuse", Value: 0.0},
+		model.Gauge{Name: "StackSys", Value: 0.0},
+		model.Gauge{Name: "Sys", Value: 0.0},
+		model.Gauge{Name: "TotalAlloc", Value: 0.0},
+		model.Gauge{Name: "RandomValue", Value: 0.0})
 
 	return &metrics
 }
 
-func (m *Metrics) Update() { //nolint:funlen // TODO: куда же тут еще уменьшить?
+func (m *Metrics) Update() { //nolint:funlen // long func
 	var memMetrics runtime.MemStats
 	runtime.ReadMemStats(&memMetrics)
 
-	m.PollCount = append(m.PollCount, model.Counter{Name: "PollCount", Value: m.incrementPollCount()})
+	m.PollCount.Value++
 
-	for _, gauge := range m.gauges {
+	for _, gauge := range m.Gauges {
 		switch gauge.Name {
 		case "Alloc":
 			gauge.Value = float64(memMetrics.Alloc)
@@ -118,63 +116,50 @@ func (m *Metrics) Update() { //nolint:funlen // TODO: куда же тут ещ�
 		case "TotalAlloc":
 			gauge.Value = float64(memMetrics.TotalAlloc)
 		case "RandomValue":
-			gauge.Value = float64(m.randomValueGenerate())
+			gauge.Value = float64(rand.Int())
 		default:
 			log.Warn("Unknown gauge metric: ", log.StringAttr("gauge name", gauge.Name))
 		}
 	}
 }
 
-func (m *Metrics) incrementPollCount() int64 {
-	length := len(m.PollCount)
-	if length == 0 {
-		return 1
+func (m *Metrics) Report(cfg config.Transmitter) error {
+	urls, err := m.prepareUrls(cfg)
+	if err != nil {
+		return fmt.Errorf("prepare urls: %w", err)
 	}
 
-	lastMetricValue := m.PollCount[length-1].Value
-	newLastMetricValue := lastMetricValue + 1
+	m.sendRequest(urls)
+	m.PollCount.Value = 0
 
-	return newLastMetricValue
+	return nil
 }
 
-func (*Metrics) randomValueGenerate() int64 {
-	const maxNum = 999999
-	rnd := rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec // no sec
+func (m *Metrics) prepareUrls(cfg config.Transmitter) ([]string, error) {
+	var err error
+	urls := make([]string, 0, len(m.Gauges)+1)
 
-	return rnd.Int63n(maxNum)
-}
-
-func (m *Metrics) Clear() {
-	transmitterConfig := m.config
-	*m = *NewMetrics(transmitterConfig)
-}
-
-func (m *Metrics) Report() {
-	m.sendRequest(m.prepareUrls())
-	m.Clear()
-}
-
-func (m *Metrics) prepareUrls() []string {
-	// hostPort := m.config.Host + ":" + strconv.Itoa(m.config.Port)
-	urls := make([]string, 0, len(m.gauges)+len(m.PollCount))
-
-	for _, gauge := range m.gauges {
-		url := "http://" + m.config.Address + "/update" + "/gauge/" + gauge.Name + "/" + strconv.FormatFloat(gauge.Value, 'f', -1, 64)
-		urls = append(urls, url)
-	}
-
-	for _, poll := range m.PollCount {
-		if poll.Name != "PollCount" {
-			log.Warn("Unknown counter metric: ", log.StringAttr("counter name", poll.Name))
-
-			continue
+	for _, gauge := range m.Gauges {
+		urlGauge, errGauge := url.JoinPath(baseProtocol+cfg.Address.String(), "update", "gauge", gauge.Name, strconv.FormatFloat(gauge.Value, 'f', -1, 64))
+		if errGauge != nil {
+			err = errors.Join(err, errGauge)
 		}
 
-		url := "http://" + m.config.Address + "/update" + "/counter/" + poll.Name + "/" + strconv.FormatInt(poll.Value, 10)
-		urls = append(urls, url)
+		urls = append(urls, urlGauge)
 	}
 
-	return urls
+	urlCounter, errCounter := url.JoinPath(baseProtocol+cfg.Address.String(), "update", "counter", m.PollCount.Name, strconv.FormatInt(m.PollCount.Value, 10))
+	if errCounter != nil {
+		err = errors.Join(err, errCounter)
+	}
+
+	urls = append(urls, urlCounter)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return urls, nil
 }
 
 func (*Metrics) sendRequest(urls []string) {
@@ -187,13 +172,12 @@ func (*Metrics) sendRequest(urls []string) {
 		Timeout:       clientTimeout,
 	}
 
-	for _, url := range urls {
-		response, err := client.Post(url, contentType, http.NoBody) //nolint:noctx //TODO: добавить контекст, прокинуть от запуска
+	for _, urlMetric := range urls {
+		response, err := client.Post(urlMetric, contentType, http.NoBody) //nolint:noctx //TODO: добавить контекст, прокинуть от запуска
 		if err != nil {
-			countErr++
 			log.Error("Failed to send request",
 				log.ErrAttr(err),
-				log.StringAttr("url", url),
+				log.StringAttr("url", urlMetric),
 				log.IntAttr("count errors", countErr),
 			)
 
@@ -202,13 +186,8 @@ func (*Metrics) sendRequest(urls []string) {
 
 		err = response.Body.Close()
 		if err != nil {
-			log.Error("Failed to close response body", log.ErrAttr(err))
+			log.Error("Failed to close response body",
+				log.ErrAttr(err))
 		}
-	}
-
-	if currentErrorRate := float64(countErr) / float64(len(urls)); currentErrorRate >= criticalErrorRate {
-		log.Error("critical error rate alert",
-			log.Float64Attr("current error rate", currentErrorRate),
-			log.Float64Attr("critical error rate", criticalErrorRate))
 	}
 }

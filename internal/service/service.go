@@ -5,93 +5,97 @@ import (
 
 	"metrics/config"
 	"metrics/internal/model"
-	"metrics/internal/store"
 	log "metrics/pkg/logger"
 )
 
 var (
-	ErrGaugeNotAdded    = errors.New("gauge not added")
-	ErrGaugeNotFound    = errors.New("gauge not found")
-	ErrCounterNotAdded  = errors.New("counter not added")
-	ErrCountersNotFound = errors.New("counters not found")
+	ErrGaugeNotAdded   = errors.New("gauge not added")
+	ErrGaugeNotFound   = errors.New("gauge not found")
+	ErrCounterNotAdded = errors.New("counter not added")
+	ErrCounterNotFound = errors.New("counter not found")
 )
 
-type MetricsGetter struct {
-	store  store.Store
+type Store interface {
+	AddGauge(model.Gauge)
+	AddCounter(model.Counter)
+	GetGauge(string) (model.Gauge, error)
+	GetAllGauges() []model.Gauge
+	GetCounter(string) (model.Counter, error)
+	GetAllCounters() []model.Counter
+}
+
+type Receiver struct {
+	store  Store
 	config config.ReceiverConfig
 }
 
-func NewMetricsGetterService(store store.Store, config config.ReceiverConfig) MetricsGetter {
-	return MetricsGetter{
+func NewReceiverService(store Store, config config.ReceiverConfig) Receiver {
+	return Receiver{
 		store:  store,
 		config: config,
 	}
 }
 
-func (m MetricsGetter) AddGauge(gaugeName string, gaugeValue float64) (model.Gauge, error) {
+func (r Receiver) AddGauge(gaugeName string, gaugeValue float64) model.Gauge {
 	gauge := model.Gauge{
 		Name:  gaugeName,
 		Value: gaugeValue,
 	}
 
-	if ok := m.store.AddGauge(gauge); !ok {
-		return model.Gauge{}, ErrGaugeNotAdded
-	}
+	r.store.AddGauge(gauge)
 
-	log.Info("gauge added", log.AnyAttr("gauge", gauge))
+	log.Debug("gauge added", log.AnyAttr("gauge", gauge))
 
-	return gauge, nil
+	return gauge
 }
 
-func (m MetricsGetter) AddCounter(counterName string, counterValue int64) (model.Counter, error) {
+func (r Receiver) AddCounter(counterName string, counterValue int64) model.Counter {
 	counter := model.Counter{
 		Name:  counterName,
 		Value: counterValue,
 	}
 
-	if ok := m.store.AddCounter(counter); !ok {
-		return model.Counter{}, ErrCounterNotAdded
-	}
+	r.store.AddCounter(counter)
 
-	log.Info("counter added", log.AnyAttr("counter", counter))
+	log.Debug("counter added", log.AnyAttr("counter", counter))
 
-	return counter, nil
+	return counter
 }
 
-func (m MetricsGetter) GetGauge(gaugeName string) (model.Gauge, error) {
-	gauge, ok := m.store.GetGauge(gaugeName)
-	if !ok {
+func (r Receiver) GetGauge(gaugeName string) (model.Gauge, error) {
+	gauge, err := r.store.GetGauge(gaugeName)
+	if err != nil {
 		return model.Gauge{}, ErrGaugeNotFound
 	}
 
-	log.Info("gauge returned", log.AnyAttr("gauge", gauge))
+	log.Debug("gauge returned", log.AnyAttr("gauge", gauge))
 
 	return gauge, nil
 }
 
-func (m MetricsGetter) GetAllGauges() []model.Gauge {
-	gauges := m.store.GetAllGauges()
+func (r Receiver) GetAllGauges() []model.Gauge {
+	gauges := r.store.GetAllGauges()
 
-	log.Info("all gauges returned", log.AnyAttr("gauge", gauges))
+	log.Debug("all gauges returned", log.AnyAttr("gauge", gauges))
 
 	return gauges
 }
 
-func (m MetricsGetter) GetCounters(counterName string) ([]model.Counter, error) {
-	counters, ok := m.store.GetCounters(counterName)
-	if !ok {
-		return nil, ErrCountersNotFound
+func (r Receiver) GetCounter(counterName string) (model.Counter, error) {
+	counters, err := r.store.GetCounter(counterName)
+	if err != nil {
+		return model.Counter{}, ErrCounterNotFound
 	}
 
-	log.Info("counters returned", log.AnyAttr("counters", counters))
+	log.Debug("counters returned", log.AnyAttr("counters", counters))
 
 	return counters, nil
 }
 
-func (m MetricsGetter) GetAllCounters() [][]model.Counter {
-	counters := m.store.GetAllCounters()
+func (r Receiver) GetAllCounters() []model.Counter {
+	counters := r.store.GetAllCounters()
 
-	log.Info("all counters returned", log.AnyAttr("counters", counters))
+	log.Debug("all counters returned", log.AnyAttr("counters", counters))
 
 	return counters
 }

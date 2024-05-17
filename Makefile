@@ -17,7 +17,11 @@ build-apps: ## Build an application
 	go build -o build/server metrics/cmd/server
 	go build -o build/agent metrics/cmd/agent
 
-.PHONY: build-test
+test-static: ## Test static
+	@echo "Testing ${APP} - static..."
+	go vet -vettool="$(shell which ./tests/statictest-darwin-arm64)" ./...
+
+.PHONY: test_all build-test test1 test2 test3 test4 test5
 build-test: ## Build an application
 	@echo "Building ${APP} ..."
 	go mod tidy
@@ -25,9 +29,9 @@ build-test: ## Build an application
 	cd cmd/server && go build -buildvcs=false -o server
 	cd cmd/agent && go build -buildvcs=false  -o agent
 
-test-static: ## Test static
-	@echo "Testing ${APP} - static..."
-	go vet -vettool="$(shell which ./tests/statictest-darwin-arm64)" ./...
+tests: ## Internal tests
+	@echo "Testing ${APP} ..."
+	go test ./...
 
 test1: ## Test increment #1
 	@echo "Testing ${APP} - increment 1..."
@@ -48,6 +52,9 @@ test4: ## Test increment #4
 test5: ## Test increment #5
 	@echo "Testing ${APP} - increment 5..."
 	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration5$$" -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8002 -source-path=.
+
+test_all: build-test tests test1 test2 test3 test4 test5
+	@echo "All tests completed."
 
 run: ## Run an application
 	@echo "Starting ${APP} ..."

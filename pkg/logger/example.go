@@ -14,9 +14,6 @@ func simple() { //nolint:unused // example
 	_ = NewLogger(WithAddSource(true))
 	Default().Info("Hello, World!")
 
-	logger = NewLogger(WithLevel("DEBUG"), WithAddSource(true), WithIsJSON(true), WithMiddleware(true))
-	logger.Info("Hello, World!")
-
 	logger = WithAttrs(logger, StringAttr("hello", "world"))
 	logger.Info("OK")
 }
