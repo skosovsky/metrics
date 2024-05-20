@@ -21,7 +21,7 @@ test-static: ## Test static
 	@echo "Testing ${APP} - static..."
 	go vet -vettool=$(which ./tests/statictest-darwin-arm64) ./...
 
-.PHONY: test_all lint tests build-test test1 test2 test3 test4 test5
+.PHONY: test_all lint tests build-test test1 test2 test3 test4 test5 test6
 build-test: ## Build an application
 	@echo "Building ${APP} ..."
 	go mod tidy

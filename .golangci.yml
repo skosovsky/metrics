@@ -245,6 +245,7 @@ linters-settings:
       - yaml
       - yml
       - toml
+      - env
       - mapstructure
       - binding
       - validate

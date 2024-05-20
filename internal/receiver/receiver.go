@@ -42,5 +42,10 @@ func RunServer(_ context.Context, handler Handler, cfg config.ReceiverConfig) er
 		return fmt.Errorf("could not start server: %w", err)
 	}
 
+	err := server.Close()
+	if err != nil {
+		return fmt.Errorf("could not close server: %w", err)
+	}
+
 	return nil
 }

@@ -18,22 +18,22 @@ type (
 	Address string
 
 	App struct {
-		Mode string `validate:"required,oneof=development production test" env:"APP_MODE"`
+		Mode string `env:"APP_MODE" validate:"required,oneof=development production test"`
 	}
 
 	Receiver struct {
-		Address Address `validate:"url" env:"ADDRESS"`
+		Address Address `env:"ADDRESS" validate:"url"`
 	}
 
 	Transmitter struct {
-		Address        Address `validate:"url"   env:"ADDRESS"`
-		ReportInterval int     `validate:"min=1" env:"REPORT_INTERVAL"`
-		PollInterval   int     `validate:"min=1" env:"POLL_INTERVAL"`
+		Address        Address `env:"ADDRESS"         validate:"url"`
+		ReportInterval int     `env:"REPORT_INTERVAL" validate:"min=1"`
+		PollInterval   int     `env:"POLL_INTERVAL"   validate:"min=1"`
 	}
 
 	Store struct {
-		DBDriver  string `validate:"required,oneof=sqlite3 memory" env:"DB_DRIVER"`
-		DBAddress string `                                         env:"DB_ADDRESS"`
+		DBDriver  string `env:"DB_DRIVER"  validate:"required,oneof=sqlite3 memory"`
+		DBAddress string `env:"DB_ADDRESS"`
 	}
 
 	ReceiverConfig struct {

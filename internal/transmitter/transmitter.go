@@ -16,111 +16,56 @@ import (
 )
 
 const (
-	clientTimeout     = 1 * time.Second
-	criticalErrorRate = 0.5
-	baseProtocol      = "http://"
+	clientTimeout = 1 * time.Second
+	baseProtocol  = "http://"
 )
 
 type Metrics struct {
-	Gauges    []model.Gauge
+	Gauges    map[string]model.Gauge
 	PollCount model.Counter
 }
 
 func NewMetrics() *Metrics {
-	var metrics Metrics
-
-	metrics.Gauges = append(metrics.Gauges,
-		model.Gauge{Name: "Alloc", Value: 0.0},
-		model.Gauge{Name: "BuckHashSys", Value: 0.0},
-		model.Gauge{Name: "Frees", Value: 0.0},
-		model.Gauge{Name: "GCCPUFraction", Value: 0.0},
-		model.Gauge{Name: "GCSys", Value: 0.0},
-		model.Gauge{Name: "HeapAlloc", Value: 0.0},
-		model.Gauge{Name: "HeapIdle", Value: 0.0},
-		model.Gauge{Name: "HeapInuse", Value: 0.0},
-		model.Gauge{Name: "LastGC", Value: 0.0},
-		model.Gauge{Name: "Lookups", Value: 0.0},
-		model.Gauge{Name: "MCacheInuse", Value: 0.0},
-		model.Gauge{Name: "MCacheSys", Value: 0.0},
-		model.Gauge{Name: "MSpanInuse", Value: 0.0},
-		model.Gauge{Name: "MSpanSys", Value: 0.0},
-		model.Gauge{Name: "Mallocs", Value: 0.0},
-		model.Gauge{Name: "NextGC", Value: 0.0},
-		model.Gauge{Name: "NumForcedGC", Value: 0.0},
-		model.Gauge{Name: "NumGC", Value: 0.0},
-		model.Gauge{Name: "OtherSys", Value: 0.0},
-		model.Gauge{Name: "PauseTotalNs", Value: 0.0},
-		model.Gauge{Name: "StackInuse", Value: 0.0},
-		model.Gauge{Name: "StackSys", Value: 0.0},
-		model.Gauge{Name: "Sys", Value: 0.0},
-		model.Gauge{Name: "TotalAlloc", Value: 0.0},
-		model.Gauge{Name: "RandomValue", Value: 0.0})
-
-	return &metrics
+	return &Metrics{
+		Gauges: map[string]model.Gauge{},
+		PollCount: model.Counter{
+			Name:  "",
+			Value: 0,
+		},
+	}
 }
 
-func (m *Metrics) Update() { //nolint:funlen // long func
+func (m *Metrics) Update() {
 	var memMetrics runtime.MemStats
 	runtime.ReadMemStats(&memMetrics)
 
 	m.PollCount.Value++
 
-	for i := range m.Gauges {
-		switch m.Gauges[i].Name {
-		case "Alloc":
-			m.Gauges[i].Value = float64(memMetrics.Alloc)
-		case "BuckHashSys":
-			m.Gauges[i].Value = float64(memMetrics.BuckHashSys)
-		case "Frees":
-			m.Gauges[i].Value = float64(memMetrics.Frees)
-		case "GCCPUFraction":
-			m.Gauges[i].Value = memMetrics.GCCPUFraction
-		case "GCSys":
-			m.Gauges[i].Value = float64(memMetrics.GCSys)
-		case "HeapAlloc":
-			m.Gauges[i].Value = float64(memMetrics.HeapAlloc)
-		case "HeapIdle":
-			m.Gauges[i].Value = float64(memMetrics.HeapIdle)
-		case "HeapInuse":
-			m.Gauges[i].Value = float64(memMetrics.HeapInuse)
-		case "LastGC":
-			m.Gauges[i].Value = float64(memMetrics.LastGC)
-		case "Lookups":
-			m.Gauges[i].Value = float64(memMetrics.Lookups)
-		case "MCacheInuse":
-			m.Gauges[i].Value = float64(memMetrics.MCacheInuse)
-		case "MCacheSys":
-			m.Gauges[i].Value = float64(memMetrics.MCacheSys)
-		case "MSpanInuse":
-			m.Gauges[i].Value = float64(memMetrics.MSpanInuse)
-		case "MSpanSys":
-			m.Gauges[i].Value = float64(memMetrics.MSpanSys)
-		case "Mallocs":
-			m.Gauges[i].Value = float64(memMetrics.Mallocs)
-		case "NextGC":
-			m.Gauges[i].Value = float64(memMetrics.NextGC)
-		case "NumForcedGC":
-			m.Gauges[i].Value = float64(memMetrics.NumForcedGC)
-		case "NumGC":
-			m.Gauges[i].Value = float64(memMetrics.NumGC)
-		case "OtherSys":
-			m.Gauges[i].Value = float64(memMetrics.OtherSys)
-		case "PauseTotalNs":
-			m.Gauges[i].Value = float64(memMetrics.PauseTotalNs)
-		case "StackInuse":
-			m.Gauges[i].Value = float64(memMetrics.StackInuse)
-		case "StackSys":
-			m.Gauges[i].Value = float64(memMetrics.StackSys)
-		case "Sys":
-			m.Gauges[i].Value = float64(memMetrics.Sys)
-		case "TotalAlloc":
-			m.Gauges[i].Value = float64(memMetrics.TotalAlloc)
-		case "RandomValue":
-			m.Gauges[i].Value = float64(rand.Int()) //nolint:gosec // non secure
-		default:
-			log.Warn("Unknown gauge metric: ", log.StringAttr("gauge name", m.Gauges[i].Name))
-		}
-	}
+	m.Gauges["Alloc"] = model.Gauge{Name: "Alloc", Value: float64(memMetrics.Alloc)}
+	m.Gauges["BuckHashSys"] = model.Gauge{Name: "BuckHashSys", Value: float64(memMetrics.BuckHashSys)}
+	m.Gauges["Frees"] = model.Gauge{Name: "Frees", Value: float64(memMetrics.Frees)}
+	m.Gauges["GCCPUFraction"] = model.Gauge{Name: "GCCPUFraction", Value: memMetrics.GCCPUFraction}
+	m.Gauges["GCSys"] = model.Gauge{Name: "GCSys", Value: float64(memMetrics.GCSys)}
+	m.Gauges["HeapAlloc"] = model.Gauge{Name: "HeapAlloc", Value: float64(memMetrics.HeapAlloc)}
+	m.Gauges["HeapIdle"] = model.Gauge{Name: "HeapIdle", Value: float64(memMetrics.HeapIdle)}
+	m.Gauges["HeapInuse"] = model.Gauge{Name: "HeapInuse", Value: float64(memMetrics.HeapInuse)}
+	m.Gauges["LastGC"] = model.Gauge{Name: "LastGC", Value: float64(memMetrics.LastGC)}
+	m.Gauges["Lookups"] = model.Gauge{Name: "Lookups", Value: float64(memMetrics.Lookups)}
+	m.Gauges["MCacheInuse"] = model.Gauge{Name: "MCacheInuse", Value: float64(memMetrics.MCacheInuse)}
+	m.Gauges["MCacheSys"] = model.Gauge{Name: "MCacheSys", Value: float64(memMetrics.MCacheSys)}
+	m.Gauges["MSpanInuse"] = model.Gauge{Name: "MSpanInuse", Value: float64(memMetrics.MSpanInuse)}
+	m.Gauges["MSpanSys"] = model.Gauge{Name: "MSpanSys", Value: float64(memMetrics.MSpanSys)}
+	m.Gauges["Mallocs"] = model.Gauge{Name: "Mallocs", Value: float64(memMetrics.Mallocs)}
+	m.Gauges["NextGC"] = model.Gauge{Name: "NextGC", Value: float64(memMetrics.NextGC)}
+	m.Gauges["NumForcedGC"] = model.Gauge{Name: "NumForcedGC", Value: float64(memMetrics.NumForcedGC)}
+	m.Gauges["NumGC"] = model.Gauge{Name: "NumGC", Value: float64(memMetrics.NumGC)}
+	m.Gauges["OtherSys"] = model.Gauge{Name: "OtherSys", Value: float64(memMetrics.OtherSys)}
+	m.Gauges["PauseTotalNs"] = model.Gauge{Name: "PauseTotalNs", Value: float64(memMetrics.PauseTotalNs)}
+	m.Gauges["StackInuse"] = model.Gauge{Name: "StackInuse", Value: float64(memMetrics.StackInuse)}
+	m.Gauges["StackSys"] = model.Gauge{Name: "StackSys", Value: float64(memMetrics.StackSys)}
+	m.Gauges["Sys"] = model.Gauge{Name: "Sys", Value: float64(memMetrics.Sys)}
+	m.Gauges["TotalAlloc"] = model.Gauge{Name: "TotalAlloc", Value: float64(memMetrics.TotalAlloc)}
+	m.Gauges["RandomValue"] = model.Gauge{Name: "RandomValue", Value: float64(rand.Int())} //nolint:gosec // i know
 }
 
 func (m *Metrics) Report(cfg config.Transmitter) error {

@@ -114,7 +114,9 @@ func (h Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 
 		_, err = io.WriteString(w, strconv.FormatInt(counter.Value, 10))
 		if err != nil {
-			log.Error("Error writing response", log.ErrAttr(err)) //nolint:contextcheck // false positive
+			log.Error("Error writing response", //nolint:contextcheck // false positive
+				log.ErrAttr(err))
+
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 			return
