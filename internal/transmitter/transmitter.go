@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"metrics/config"
+	log "metrics/internal/logger"
 	"metrics/internal/model"
-	log "metrics/pkg/logger"
 )
 
 const (
@@ -65,60 +65,60 @@ func (m *Metrics) Update() { //nolint:funlen // long func
 
 	m.PollCount.Value++
 
-	for _, gauge := range m.Gauges {
-		switch gauge.Name {
+	for i := range m.Gauges {
+		switch m.Gauges[i].Name {
 		case "Alloc":
-			gauge.Value = float64(memMetrics.Alloc)
+			m.Gauges[i].Value = float64(memMetrics.Alloc)
 		case "BuckHashSys":
-			gauge.Value = float64(memMetrics.BuckHashSys)
+			m.Gauges[i].Value = float64(memMetrics.BuckHashSys)
 		case "Frees":
-			gauge.Value = float64(memMetrics.Frees)
+			m.Gauges[i].Value = float64(memMetrics.Frees)
 		case "GCCPUFraction":
-			gauge.Value = memMetrics.GCCPUFraction
+			m.Gauges[i].Value = memMetrics.GCCPUFraction
 		case "GCSys":
-			gauge.Value = float64(memMetrics.GCSys)
+			m.Gauges[i].Value = float64(memMetrics.GCSys)
 		case "HeapAlloc":
-			gauge.Value = float64(memMetrics.HeapAlloc)
+			m.Gauges[i].Value = float64(memMetrics.HeapAlloc)
 		case "HeapIdle":
-			gauge.Value = float64(memMetrics.HeapIdle)
+			m.Gauges[i].Value = float64(memMetrics.HeapIdle)
 		case "HeapInuse":
-			gauge.Value = float64(memMetrics.HeapInuse)
+			m.Gauges[i].Value = float64(memMetrics.HeapInuse)
 		case "LastGC":
-			gauge.Value = float64(memMetrics.LastGC)
+			m.Gauges[i].Value = float64(memMetrics.LastGC)
 		case "Lookups":
-			gauge.Value = float64(memMetrics.Lookups)
+			m.Gauges[i].Value = float64(memMetrics.Lookups)
 		case "MCacheInuse":
-			gauge.Value = float64(memMetrics.MCacheInuse)
+			m.Gauges[i].Value = float64(memMetrics.MCacheInuse)
 		case "MCacheSys":
-			gauge.Value = float64(memMetrics.MCacheSys)
+			m.Gauges[i].Value = float64(memMetrics.MCacheSys)
 		case "MSpanInuse":
-			gauge.Value = float64(memMetrics.MSpanInuse)
+			m.Gauges[i].Value = float64(memMetrics.MSpanInuse)
 		case "MSpanSys":
-			gauge.Value = float64(memMetrics.MSpanSys)
+			m.Gauges[i].Value = float64(memMetrics.MSpanSys)
 		case "Mallocs":
-			gauge.Value = float64(memMetrics.Mallocs)
+			m.Gauges[i].Value = float64(memMetrics.Mallocs)
 		case "NextGC":
-			gauge.Value = float64(memMetrics.NextGC)
+			m.Gauges[i].Value = float64(memMetrics.NextGC)
 		case "NumForcedGC":
-			gauge.Value = float64(memMetrics.NumForcedGC)
+			m.Gauges[i].Value = float64(memMetrics.NumForcedGC)
 		case "NumGC":
-			gauge.Value = float64(memMetrics.NumGC)
+			m.Gauges[i].Value = float64(memMetrics.NumGC)
 		case "OtherSys":
-			gauge.Value = float64(memMetrics.OtherSys)
+			m.Gauges[i].Value = float64(memMetrics.OtherSys)
 		case "PauseTotalNs":
-			gauge.Value = float64(memMetrics.PauseTotalNs)
+			m.Gauges[i].Value = float64(memMetrics.PauseTotalNs)
 		case "StackInuse":
-			gauge.Value = float64(memMetrics.StackInuse)
+			m.Gauges[i].Value = float64(memMetrics.StackInuse)
 		case "StackSys":
-			gauge.Value = float64(memMetrics.StackSys)
+			m.Gauges[i].Value = float64(memMetrics.StackSys)
 		case "Sys":
-			gauge.Value = float64(memMetrics.Sys)
+			m.Gauges[i].Value = float64(memMetrics.Sys)
 		case "TotalAlloc":
-			gauge.Value = float64(memMetrics.TotalAlloc)
+			m.Gauges[i].Value = float64(memMetrics.TotalAlloc)
 		case "RandomValue":
-			gauge.Value = float64(rand.Int())
+			m.Gauges[i].Value = float64(rand.Int()) //nolint:gosec // non secure
 		default:
-			log.Warn("Unknown gauge metric: ", log.StringAttr("gauge name", gauge.Name))
+			log.Warn("Unknown gauge metric: ", log.StringAttr("gauge name", m.Gauges[i].Name))
 		}
 	}
 }
@@ -164,7 +164,6 @@ func (m *Metrics) prepareUrls(cfg config.Transmitter) ([]string, error) {
 
 func (*Metrics) sendRequest(urls []string) {
 	var contentType = "text/plain"
-	var countErr int
 	var client = &http.Client{
 		Transport:     nil,
 		CheckRedirect: nil,
@@ -178,7 +177,6 @@ func (*Metrics) sendRequest(urls []string) {
 			log.Error("Failed to send request",
 				log.ErrAttr(err),
 				log.StringAttr("url", urlMetric),
-				log.IntAttr("count errors", countErr),
 			)
 
 			return

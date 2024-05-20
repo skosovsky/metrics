@@ -2,16 +2,15 @@ package service
 
 import (
 	"errors"
+	"fmt"
 
 	"metrics/config"
+	log "metrics/internal/logger"
 	"metrics/internal/model"
-	log "metrics/pkg/logger"
 )
 
 var (
-	ErrGaugeNotAdded   = errors.New("gauge not added")
 	ErrGaugeNotFound   = errors.New("gauge not found")
-	ErrCounterNotAdded = errors.New("counter not added")
 	ErrCounterNotFound = errors.New("counter not found")
 )
 
@@ -44,7 +43,9 @@ func (r Receiver) AddGauge(gaugeName string, gaugeValue float64) model.Gauge {
 
 	r.store.AddGauge(gauge)
 
-	log.Debug("gauge added", log.AnyAttr("gauge", gauge))
+	log.Debug("gauge added",
+		log.StringAttr("name", gauge.Name),
+		log.Float64Attr("gauge", gauge.Value))
 
 	return gauge
 }
@@ -57,7 +58,9 @@ func (r Receiver) AddCounter(counterName string, counterValue int64) model.Count
 
 	r.store.AddCounter(counter)
 
-	log.Debug("counter added", log.AnyAttr("counter", counter))
+	log.Debug("counter added",
+		log.StringAttr("name", counter.Name),
+		log.Int64Attr("counter", counter.Value))
 
 	return counter
 }
@@ -68,7 +71,9 @@ func (r Receiver) GetGauge(gaugeName string) (model.Gauge, error) {
 		return model.Gauge{}, ErrGaugeNotFound
 	}
 
-	log.Debug("gauge returned", log.AnyAttr("gauge", gauge))
+	log.Debug("gauge returned",
+		log.StringAttr("name", gauge.Name),
+		log.Float64Attr("gauge", gauge.Value))
 
 	return gauge, nil
 }
@@ -76,26 +81,30 @@ func (r Receiver) GetGauge(gaugeName string) (model.Gauge, error) {
 func (r Receiver) GetAllGauges() []model.Gauge {
 	gauges := r.store.GetAllGauges()
 
-	log.Debug("all gauges returned", log.AnyAttr("gauge", gauges))
+	log.Debug("all gauges returned",
+		log.StringAttr("gauges", fmt.Sprintf("%v", gauges)))
 
 	return gauges
 }
 
 func (r Receiver) GetCounter(counterName string) (model.Counter, error) {
-	counters, err := r.store.GetCounter(counterName)
+	counter, err := r.store.GetCounter(counterName)
 	if err != nil {
 		return model.Counter{}, ErrCounterNotFound
 	}
 
-	log.Debug("counters returned", log.AnyAttr("counters", counters))
+	log.Debug("counter returned",
+		log.StringAttr("name", counter.Name),
+		log.Int64Attr("counter", counter.Value))
 
-	return counters, nil
+	return counter, nil
 }
 
 func (r Receiver) GetAllCounters() []model.Counter {
 	counters := r.store.GetAllCounters()
 
-	log.Debug("all counters returned", log.AnyAttr("counters", counters))
+	log.Debug("all counters returned",
+		log.StringAttr("counters", fmt.Sprintf("%v", counters)))
 
 	return counters
 }

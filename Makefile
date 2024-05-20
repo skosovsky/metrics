@@ -19,15 +19,19 @@ build-apps: ## Build an application
 
 test-static: ## Test static
 	@echo "Testing ${APP} - static..."
-	go vet -vettool="$(shell which ./tests/statictest-darwin-arm64)" ./...
+	go vet -vettool=$(which ./tests/statictest-darwin-arm64) ./...
 
-.PHONY: test_all build-test test1 test2 test3 test4 test5
+.PHONY: test_all lint tests build-test test1 test2 test3 test4 test5
 build-test: ## Build an application
 	@echo "Building ${APP} ..."
 	go mod tidy
 	go generate ./...
 	cd cmd/server && go build -buildvcs=false -o server
-	cd cmd/agent && go build -buildvcs=false  -o agent
+	cd cmd/agent  && go build -buildvcs=false -o agent
+
+lint: ## Check a code by golangci-lint
+	@echo "Linter checking..."
+	golangci-lint run --fix -c .golangci.yml ./...
 
 tests: ## Internal tests
 	@echo "Testing ${APP} ..."
@@ -53,7 +57,11 @@ test5: ## Test increment #5
 	@echo "Testing ${APP} - increment 5..."
 	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration5$$" -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8002 -source-path=.
 
-test_all: build-test tests test1 test2 test3 test4 test5
+test6: ## Test increment #6
+	@echo "Testing ${APP} - increment 6..."
+	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration6$$" -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8003 -source-path=.
+
+test_all: lint tests build-test test1 test2 test3 test4 test5 test6
 	@echo "All tests completed."
 
 run: ## Run an application
@@ -72,7 +80,3 @@ clean: ## Clean a garbage
 	@echo "Cleaning"
 	go clean
 	rm -rf build
-
-lint: ## Check a code by golangci-lint
-	@echo "Linter checking..."
-	golangci-lint run -c .golangci.yml ./...

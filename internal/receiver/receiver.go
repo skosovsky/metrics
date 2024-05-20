@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"metrics/config"
-	log "metrics/pkg/logger"
+	log "metrics/internal/logger"
 )
 
 const (

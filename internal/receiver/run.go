@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"metrics/config"
+	log "metrics/internal/logger"
 	"metrics/internal/service"
 	"metrics/internal/store"
-	log "metrics/pkg/logger"
 )
 
 func Run(cfg config.ReceiverConfig) {

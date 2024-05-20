@@ -7,7 +7,7 @@ import (
 	"runtime/debug"
 	"strings"
 
-	log "metrics/pkg/logger"
+	log "metrics/internal/logger"
 )
 
 var ErrInfoUnknown = errors.New("app name or revision unknown")

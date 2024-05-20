@@ -2,8 +2,8 @@ package main
 
 import (
 	"metrics/config"
+	log "metrics/internal/logger"
 	"metrics/internal/transmitter"
-	log "metrics/pkg/logger"
 )
 
 func main() {

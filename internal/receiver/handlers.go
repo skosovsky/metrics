@@ -7,12 +7,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	log "metrics/internal/logger"
 	"metrics/internal/model"
 	"metrics/internal/service"
-	log "metrics/pkg/logger"
 )
-
-type KeyServiceCtx struct{}
 
 type Handler struct {
 	service service.Receiver
@@ -25,9 +23,9 @@ func NewHandler(service service.Receiver) Handler {
 func (h Handler) InitRoutes() http.Handler {
 	router := chi.NewRouter()
 
-	router.Post("/update/{kind}/{name}/{value}", h.AddMetric)
-	router.Get("/value/{kind}/{name}", h.GetMetric)
-	router.Get("/", h.GetAllMetrics)
+	router.Post("/update/{kind}/{name}/{value}", WithLogging(h.AddMetric))
+	router.Get("/value/{kind}/{name}", WithLogging(h.GetMetric))
+	router.Get("/", WithLogging(h.GetAllMetrics))
 
 	return router
 }
@@ -48,7 +46,7 @@ func (h Handler) AddMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	valueString := chi.URLParam(r, "value") // for mux: valueString := r.PathValue("value")
+	valueString := chi.URLParam(r, "value")
 	if valueString == "" {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 
