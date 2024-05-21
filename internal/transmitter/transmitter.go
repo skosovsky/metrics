@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"metrics/config"
-	log "metrics/internal/logger"
+	"metrics/internal/log"
 	"metrics/internal/model"
 )
 

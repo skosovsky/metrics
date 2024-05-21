@@ -2,7 +2,7 @@ package main
 
 import (
 	"metrics/config"
-	log "metrics/internal/logger"
+	"metrics/internal/log"
 	"metrics/internal/transmitter"
 )
 

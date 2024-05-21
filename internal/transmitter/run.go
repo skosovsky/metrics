@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"metrics/config"
-	log "metrics/internal/logger"
+	"metrics/internal/log"
 )
 
 func Run(cfg config.TransmitterConfig) {

@@ -1,4 +1,4 @@
-package logger
+package log
 
 func simple() { //nolint:unused // example
 	logger := NewLogger(WithSetDefault(true))

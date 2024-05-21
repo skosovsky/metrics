@@ -5,7 +5,7 @@ import (
 
 	"github.com/joho/godotenv"
 
-	log "metrics/internal/logger"
+	"metrics/internal/log"
 )
 
 func LoadTransmitterEnv() {

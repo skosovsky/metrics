@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"metrics/config"
-	log "metrics/internal/logger"
+	"metrics/internal/log"
 )
 
 const (
@@ -39,7 +39,7 @@ func RunServer(_ context.Context, handler Handler, cfg config.ReceiverConfig) er
 		log.StringAttr("host:port", string(cfg.Receiver.Address)))
 
 	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-		return fmt.Errorf("could not start server: %w", err)
+		return fmt.Errorf("server error: %w", err)
 	}
 
 	err := server.Close()

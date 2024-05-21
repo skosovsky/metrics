@@ -2,7 +2,7 @@ package main
 
 import (
 	"metrics/config"
-	log "metrics/internal/logger"
+	"metrics/internal/log"
 	"metrics/internal/receiver"
 )
 
@@ -27,5 +27,9 @@ func main() {
 		log.StringAttr("address", string(cfg.Receiver.Address)),
 	)
 
-	receiver.Run(cfg)
+	err = receiver.Run(cfg)
+	if err != nil {
+		log.Fatal("receiver run error",
+			log.ErrAttr(err))
+	}
 }

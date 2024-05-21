@@ -1,11 +1,11 @@
-package logger_test
+package log_test
 
 import (
 	"context"
 	"log/slog"
 	"testing"
 
-	log "metrics/internal/logger"
+	"metrics/internal/log"
 )
 
 func TestNewLogger(t *testing.T) {

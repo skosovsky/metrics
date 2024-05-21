@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	log "metrics/internal/logger"
+	"metrics/internal/log"
 	"metrics/internal/model"
 	"metrics/internal/service"
 )
