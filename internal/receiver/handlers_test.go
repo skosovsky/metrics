@@ -11,8 +11,8 @@ import (
 
 	"metrics/config"
 	"metrics/internal/receiver"
-	"metrics/internal/service"
-	"metrics/internal/store"
+	"metrics/internal/receiver/internal/service"
+	"metrics/internal/receiver/internal/store"
 )
 
 func TestMethods(t *testing.T) {

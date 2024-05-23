@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"metrics/config"
-	"metrics/internal/service"
-	"metrics/internal/store"
+	"metrics/internal/receiver/internal/service"
+	"metrics/internal/receiver/internal/store"
 )
 
 func Run(cfg config.ReceiverConfig) error {

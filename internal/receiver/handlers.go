@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"metrics/internal/log"
-	"metrics/internal/service"
+	"metrics/internal/receiver/internal/service"
 )
 
 type Handler struct {

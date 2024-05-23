@@ -1,6 +1,6 @@
 package store
 
-import "metrics/internal/service"
+import "metrics/internal/receiver/internal/service"
 
 type DummyStore struct{}
 
