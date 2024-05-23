@@ -194,10 +194,10 @@ func (Handler) prepareAllCounters(counters []service.Counter) string {
 	var answer strings.Builder
 
 	for _, counter := range counters {
-		answer.WriteString(counter.Name)                         //nolint:errcheck // always returns nil error
-		answer.WriteString(" ")                                  //nolint:errcheck // always returns nil error
-		answer.WriteString(strconv.FormatInt(counter.Value, 10)) //nolint:errcheck // always returns nil error
-		answer.WriteString("\n")                                 //nolint:errcheck // always returns nil error
+		_, _ = answer.WriteString(counter.Name)                         // always returns nil error
+		_, _ = answer.WriteString(" ")                                  // always returns nil error
+		_, _ = answer.WriteString(strconv.FormatInt(counter.Value, 10)) // always returns nil error
+		_, _ = answer.WriteString("\n")                                 // always returns nil error
 	}
 
 	return answer.String()
@@ -207,10 +207,10 @@ func (Handler) prepareAllGauges(gauges []service.Gauge) string {
 	var answer strings.Builder
 
 	for _, gauge := range gauges {
-		answer.WriteString(gauge.Name)                                    //nolint:errcheck // always returns nil error
-		answer.WriteString(" ")                                           //nolint:errcheck // always returns nil error
-		answer.WriteString(strconv.FormatFloat(gauge.Value, 'f', -1, 64)) //nolint:errcheck // always returns nil error
-		answer.WriteString("\n")                                          //nolint:errcheck // always returns nil error
+		_, _ = answer.WriteString(gauge.Name)                                    // always returns nil error
+		_, _ = answer.WriteString(" ")                                           // always returns nil error
+		_, _ = answer.WriteString(strconv.FormatFloat(gauge.Value, 'f', -1, 64)) // always returns nil error
+		_, _ = answer.WriteString("\n")                                          // always returns nil error
 	}
 
 	return answer.String()
