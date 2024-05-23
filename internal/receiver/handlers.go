@@ -8,7 +8,6 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"metrics/internal/log"
-	"metrics/internal/model"
 	"metrics/internal/service"
 )
 
@@ -114,7 +113,7 @@ func (h Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 
 		_, err = io.WriteString(w, strconv.FormatInt(counter.Value, 10))
 		if err != nil {
-			log.Error("Error writing response", //nolint:contextcheck // false positive
+			log.Error("Error writing response", //nolint:contextcheck // no ctx
 				log.ErrAttr(err))
 
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -137,7 +136,8 @@ func (h Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 
 		_, err = io.WriteString(w, gaugeValue)
 		if err != nil {
-			log.Error("Error writing response", log.ErrAttr(err)) //nolint:contextcheck // false positive
+			log.Error("Error writing response", //nolint:contextcheck // no ctx
+				log.ErrAttr(err))
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 			return
@@ -178,7 +178,8 @@ func (h Handler) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 
 	_, err := io.WriteString(w, answer)
 	if err != nil {
-		log.Error("Error writing response", log.ErrAttr(err)) //nolint:contextcheck // false positive
+		log.Error("Error writing response", //nolint:contextcheck // no ctx
+			log.ErrAttr(err))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 		return
@@ -188,7 +189,7 @@ func (h Handler) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (Handler) prepareAllCounters(counters []model.Counter) string {
+func (Handler) prepareAllCounters(counters []service.Counter) string {
 	var answer string
 
 	for _, counter := range counters {
@@ -198,7 +199,7 @@ func (Handler) prepareAllCounters(counters []model.Counter) string {
 	return answer
 }
 
-func (Handler) prepareAllGauges(gauges []model.Gauge) string {
+func (Handler) prepareAllGauges(gauges []service.Gauge) string {
 	var answer string
 
 	for _, gauge := range gauges {

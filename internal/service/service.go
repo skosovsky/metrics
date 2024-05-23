@@ -6,7 +6,18 @@ import (
 
 	"metrics/config"
 	"metrics/internal/log"
-	"metrics/internal/model"
+)
+
+type (
+	Counter struct {
+		Name  string
+		Value int64
+	}
+
+	Gauge struct {
+		Name  string
+		Value float64
+	}
 )
 
 var (
@@ -15,12 +26,12 @@ var (
 )
 
 type Store interface {
-	AddGauge(model.Gauge)
-	AddCounter(model.Counter)
-	GetGauge(string) (model.Gauge, error)
-	GetAllGauges() []model.Gauge
-	GetCounter(string) (model.Counter, error)
-	GetAllCounters() []model.Counter
+	AddGauge(Gauge)
+	AddCounter(Counter)
+	GetGauge(string) (Gauge, error)
+	GetAllGauges() []Gauge
+	GetCounter(string) (Counter, error)
+	GetAllCounters() []Counter
 }
 
 type Receiver struct {
@@ -35,8 +46,8 @@ func NewReceiverService(store Store, config config.ReceiverConfig) Receiver {
 	}
 }
 
-func (r Receiver) AddGauge(gaugeName string, gaugeValue float64) model.Gauge {
-	gauge := model.Gauge{
+func (r Receiver) AddGauge(gaugeName string, gaugeValue float64) Gauge {
+	gauge := Gauge{
 		Name:  gaugeName,
 		Value: gaugeValue,
 	}
@@ -50,8 +61,8 @@ func (r Receiver) AddGauge(gaugeName string, gaugeValue float64) model.Gauge {
 	return gauge
 }
 
-func (r Receiver) AddCounter(counterName string, counterValue int64) model.Counter {
-	counter := model.Counter{
+func (r Receiver) AddCounter(counterName string, counterValue int64) Counter {
+	counter := Counter{
 		Name:  counterName,
 		Value: counterValue,
 	}
@@ -65,10 +76,10 @@ func (r Receiver) AddCounter(counterName string, counterValue int64) model.Count
 	return counter
 }
 
-func (r Receiver) GetGauge(gaugeName string) (model.Gauge, error) {
+func (r Receiver) GetGauge(gaugeName string) (Gauge, error) {
 	gauge, err := r.store.GetGauge(gaugeName)
 	if err != nil {
-		return model.Gauge{}, ErrGaugeNotFound
+		return Gauge{}, ErrGaugeNotFound
 	}
 
 	log.Debug("gauge returned",
@@ -78,7 +89,7 @@ func (r Receiver) GetGauge(gaugeName string) (model.Gauge, error) {
 	return gauge, nil
 }
 
-func (r Receiver) GetAllGauges() []model.Gauge {
+func (r Receiver) GetAllGauges() []Gauge {
 	gauges := r.store.GetAllGauges()
 
 	log.Debug("all gauges returned",
@@ -87,10 +98,10 @@ func (r Receiver) GetAllGauges() []model.Gauge {
 	return gauges
 }
 
-func (r Receiver) GetCounter(counterName string) (model.Counter, error) {
+func (r Receiver) GetCounter(counterName string) (Counter, error) {
 	counter, err := r.store.GetCounter(counterName)
 	if err != nil {
-		return model.Counter{}, ErrCounterNotFound
+		return Counter{}, ErrCounterNotFound
 	}
 
 	log.Debug("counter returned",
@@ -100,7 +111,7 @@ func (r Receiver) GetCounter(counterName string) (model.Counter, error) {
 	return counter, nil
 }
 
-func (r Receiver) GetAllCounters() []model.Counter {
+func (r Receiver) GetAllCounters() []Counter {
 	counters := r.store.GetAllCounters()
 
 	log.Debug("all counters returned",

@@ -1,8 +1,6 @@
 package store
 
-import (
-	"metrics/internal/model"
-)
+import "metrics/internal/service"
 
 type DummyStore struct{}
 
@@ -10,24 +8,24 @@ func NewDummyStore() *DummyStore {
 	return &DummyStore{}
 }
 
-func (m *DummyStore) AddGauge(_ model.Gauge) {
+func (m *DummyStore) AddGauge(_ service.Gauge) {
 }
 
-func (m *DummyStore) AddCounter(_ model.Counter) {
+func (m *DummyStore) AddCounter(_ service.Counter) {
 }
 
-func (m *DummyStore) GetGauge(_ string) (model.Gauge, error) {
-	return model.Gauge{}, nil //nolint:exhaustruct // empty
+func (m *DummyStore) GetGauge(_ string) (service.Gauge, error) {
+	return service.Gauge{}, nil //nolint:exhaustruct // empty
 }
 
-func (m *DummyStore) GetAllGauges() []model.Gauge {
-	return []model.Gauge{}
+func (m *DummyStore) GetAllGauges() []service.Gauge {
+	return []service.Gauge{}
 }
 
-func (m *DummyStore) GetCounter(_ string) (model.Counter, error) {
-	return model.Counter{}, nil //nolint:exhaustruct // empty
+func (m *DummyStore) GetCounter(_ string) (service.Counter, error) {
+	return service.Counter{}, nil //nolint:exhaustruct // empty
 }
 
-func (m *DummyStore) GetAllCounters() []model.Counter {
-	return []model.Counter{}
+func (m *DummyStore) GetAllCounters() []service.Counter {
+	return []service.Counter{}
 }

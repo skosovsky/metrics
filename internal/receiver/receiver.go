@@ -35,7 +35,7 @@ func RunServer(_ context.Context, handler Handler, cfg config.ReceiverConfig) er
 		ConnContext:                  nil,
 	}
 
-	log.Info("server starting", //nolint:contextcheck // false positive
+	log.Info("server starting", //nolint:contextcheck // no ctx
 		log.StringAttr("host:port", string(cfg.Receiver.Address)))
 
 	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
