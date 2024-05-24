@@ -1,4 +1,4 @@
-.SILENT:
+#.SILENT:
 APP=metrics
 
 .PHONY: help
@@ -8,21 +8,32 @@ help: Makefile ## Show this help
 	@echo
 	@fgrep -h "##" $(MAKEFILE_LIST) | sed -e 's/\(\:.*\#\#\)/\:\ /' | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##//'
 
-.PHONY: build-server
-build-server: ## Build an application
+.PHONY: build-apps
+build-apps: ## Build an application
 	@echo "Building ${APP} ..."
 	mkdir -p build
 	go build -o build/server metrics/cmd/server
+	go build -o build/agent metrics/cmd/agent
+	go generate ./...
 
 .PHONY: build-test
 build-test: ## Build an application
 	@echo "Building ${APP} ..."
-	go build -buildvcs=false -o cmd/server/server metrics/cmd/server
-	go build -buildvcs=false -o cmd/agent/agent metrics/cmd/agent
+	cd cmd/server && go build -buildvcs=false -o server
+	cd cmd/agent && go build -buildvcs=false  -o agent
+	go generate ./...
+
+test-static: ## Test static
+	@echo "Testing ${APP} - static..."
+	go vet -vettool="$(shell which ./tests/statictest-darwin-arm64)" ./...
 
 test1: ## Test increment #1
 	@echo "Testing ${APP} - increment 1..."
-	tests/metricstest-darwin-arm64 -test.v -test.run=^TestIteration1$ -binary-path=cmd/server/server
+	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration1$$" -binary-path=cmd/server/server
+
+test2: ## Test increment #2
+	@echo "Testing ${APP} - increment 2..."
+	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration2[AB]*$$" -source-path=. -agent-binary-path=cmd/agent/agent
 
 run: ## Run an application
 	@echo "Starting ${APP} ..."

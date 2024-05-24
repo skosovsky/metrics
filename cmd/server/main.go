@@ -11,7 +11,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"metrics/config"
-	"metrics/internal/server"
+	"metrics/internal/receiver"
 	"metrics/internal/service"
 	"metrics/internal/store"
 	log "metrics/pkg/logger"
@@ -35,9 +35,9 @@ func main() {
 
 	metricsGetter := service.NewMetricsGetterService(db)
 
-	ctx := context.WithValue(context.Background(), server.KeyServiceCtx{}, metricsGetter)
+	ctx := context.WithValue(context.Background(), receiver.KeyServiceCtx{}, metricsGetter)
 
-	if err = server.RunServer(ctx, cfg); err != nil {
+	if err = receiver.RunServer(ctx, cfg); err != nil {
 		log.Fatal("run", log.ErrAttr(err))
 	}
 }

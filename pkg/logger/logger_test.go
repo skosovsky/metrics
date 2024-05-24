@@ -12,7 +12,7 @@ func TestNewLogger(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	logger := log.NewLogger()
+	logger := log.NewLogger(log.WithSetDefault(true))
 
 	if logger == nil {
 		t.Errorf("logger should not be nil")
@@ -30,12 +30,12 @@ func TestNewLogger(t *testing.T) {
 		t.Errorf("logger should be default logger")
 	}
 
-	logger = log.NewLogger(log.WithIsJSON(true))
+	logger = log.NewLogger(log.WithIsJSON(true), log.WithSetDefault(true))
 	if slog.Default() != logger {
 		t.Errorf("logger should be default logger")
 	}
 
-	_ = log.NewLogger(log.WithIsJSON(false))
+	logger = log.NewLogger(log.WithIsJSON(false), log.WithSetDefault(false))
 	if slog.Default() == logger {
 		t.Errorf("logger should NOT be default logger")
 	}
@@ -67,7 +67,7 @@ func TestNewLogger(t *testing.T) {
 		t.Errorf("logger should NOT be enabled for info level")
 	}
 
-	logger = log.NewLogger(log.WithAddSource(true))
+	logger = log.NewLogger(log.WithAddSource(true), log.WithSetDefault(true))
 	if slog.Default() != logger {
 		t.Errorf("logger should be default logger")
 	}
