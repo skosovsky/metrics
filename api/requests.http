@@ -1,0 +1,22 @@
+POST http://localhost:8080/update/counter/metrik/700.50
+Content-Type: text/plain
+
+###
+POST http://localhost:8080/update/gauge/metrik/700.4
+Content-Type: text/plain
+
+###
+POST http://localhost:8080/
+Content-Type: text/plain
+
+###
+POST http://localhost:8080/upd/
+Content-Type: text/plain
+
+###
+POST http://localhost:8080/update/boney/
+Content-Type: text/plain
+
+###
+POST http://localhost:8080/update/gauge/metrik/
+Content-Type: text/plain

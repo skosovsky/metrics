@@ -1,0 +1,12 @@
+sequenceDiagram
+    autonumber
+    actor user
+    participant server
+    user ->> server: POST / link
+    activate server
+    create participant store
+    server ->> store: INSERT
+    destroy store
+    store -->> server: OK
+    server -->> user: status / OK
+    deactivate server

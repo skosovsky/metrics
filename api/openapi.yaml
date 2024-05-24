@@ -1,0 +1,52 @@
+openapi: 3.1.0
+info:
+  title: Metrics
+  description: Metrics - service receive metrics
+  version: 0.0.1
+  contact:
+    name: Support API
+    email: skosovsky@smartcreating.ru
+servers:
+  - url: http://localhost:8080
+    description: Local server 1
+  - url: http://127.0.0.1:8080
+    description: Local server 2
+paths:
+  /update/{kind}/{name}/{value}:
+    post:
+      summary: Store metric
+      description: Получает и сохранят метрику
+      operationId: storeMetric
+      parameters:
+        - name: kind
+          in: path
+          description: Kind of metric
+          required: false
+          schema:
+            type: string
+            enum:
+              - gauge
+              - counter
+              - unknown
+        - name: name
+          in: path
+          description: Metric name
+          required: false
+          schema:
+            type: string
+        - name: value
+          in: path
+          description: Metric value
+          required: false
+          schema:
+            type: string
+      responses:
+        200:
+          description: Metric stored successfully
+        400:
+          description: Bad request - invalid type or value provided
+        404:
+          description: Metric name not provided
+externalDocs:
+  description: Template repo
+  url: https://github.com/Yandex-Practicum/go-musthave-metrics-tpl
