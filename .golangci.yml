@@ -26,10 +26,13 @@ linters-settings:
     package-average: 10.0
 
   errcheck:
-    # Report about not checking of errors in type assertions: `a := b.(MyStruct)`.
-    # Such cases aren't reported by default.
-    # Default: false
     check-type-assertions: true
+    check-blank: false
+    disable-default-exclusions: true
+    exclude-functions:
+      - io/ioutil.ReadFile
+      - io.Copy(*bytes.Buffer)
+      - io.Copy(os.Stdout)
 
   exhaustive:
     # Program elements to check for exhaustiveness.
@@ -233,6 +236,20 @@ linters-settings:
     # Default: []
     packages:
       - github.com/jmoiron/sqlx
+
+  tagalign:
+    align: true
+    sort: true
+    order:
+      - json
+      - yaml
+      - yml
+      - toml
+      - env
+      - mapstructure
+      - binding
+      - validate
+    strict: true
 
   tenv:
     # The option `all` will run against whole test files (`_test.go`) regardless of method/function signatures.

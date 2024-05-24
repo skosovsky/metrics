@@ -1,4 +1,4 @@
-package logger
+package log
 
 import (
 	"context"
@@ -28,7 +28,7 @@ type (
 	Handler        = slog.Handler
 	Value          = slog.Value
 	HandlerOptions = slog.HandlerOptions
-	LogValuer      = slog.LogValuer
+	LogValuer      = slog.LogValuer //nolint:revive // alias
 	Record         = slog.Record
 	Leveler        = slog.Leveler
 )

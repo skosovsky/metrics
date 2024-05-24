@@ -12,20 +12,30 @@ help: Makefile ## Show this help
 build-apps: ## Build an application
 	@echo "Building ${APP} ..."
 	mkdir -p build
+	go mod tidy
+	go generate ./...
 	go build -o build/server metrics/cmd/server
 	go build -o build/agent metrics/cmd/agent
-	go generate ./...
-
-.PHONY: build-test
-build-test: ## Build an application
-	@echo "Building ${APP} ..."
-	cd cmd/server && go build -buildvcs=false -o server
-	cd cmd/agent && go build -buildvcs=false  -o agent
-	go generate ./...
 
 test-static: ## Test static
 	@echo "Testing ${APP} - static..."
-	go vet -vettool="$(shell which ./tests/statictest-darwin-arm64)" ./...
+	go vet -vettool=$(which ./tests/statictest-darwin-arm64) ./...
+
+.PHONY: test_all lint tests build-test test1 test2 test3 test4 test5 test6
+build-test: ## Build an application
+	@echo "Building ${APP} ..."
+	go mod tidy
+	go generate ./...
+	cd cmd/server && go build -buildvcs=false -o server
+	cd cmd/agent  && go build -buildvcs=false -o agent
+
+lint: ## Check a code by golangci-lint
+	@echo "Linter checking..."
+	golangci-lint run --fix -c .golangci.yml ./...
+
+tests: ## Internal tests
+	@echo "Testing ${APP} ..."
+	go test ./...
 
 test1: ## Test increment #1
 	@echo "Testing ${APP} - increment 1..."
@@ -43,6 +53,17 @@ test4: ## Test increment #4
 	@echo "Testing ${APP} - increment 4..."
 	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration4$$" -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8001 -source-path=.
 
+test5: ## Test increment #5
+	@echo "Testing ${APP} - increment 5..."
+	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration5$$" -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8002 -source-path=.
+
+test6: ## Test increment #6
+	@echo "Testing ${APP} - increment 6..."
+	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration6$$" -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8003 -source-path=.
+
+test_all: lint tests build-test test1 test2 test3 test4 test5 test6
+	@echo "All tests completed."
+
 run: ## Run an application
 	@echo "Starting ${APP} ..."
 	go run main.go
@@ -59,7 +80,3 @@ clean: ## Clean a garbage
 	@echo "Cleaning"
 	go clean
 	rm -rf build
-
-lint: ## Check a code by golangci-lint
-	@echo "Linter checking..."
-	golangci-lint run -c .golangci.yml ./...

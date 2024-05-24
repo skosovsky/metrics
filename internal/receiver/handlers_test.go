@@ -9,7 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"metrics/config"
 	"metrics/internal/receiver"
+	"metrics/internal/receiver/internal/service"
+	"metrics/internal/receiver/internal/store"
 )
 
 func TestMethods(t *testing.T) {
@@ -31,8 +34,8 @@ func TestMethods(t *testing.T) {
 			method:  http.MethodPost,
 			request: "/",
 			want: want{
-				code:        500,
-				response:    "Internal Server Error\n",
+				code:        404,
+				response:    "Not Found\n",
 				contentType: "text/plain; charset=utf-8",
 			},
 		},
@@ -68,8 +71,12 @@ func TestMethods(t *testing.T) {
 		},
 	}
 
+	var cfg config.ReceiverConfig
+	db := store.NewDummyStore()
+	receiverService := service.NewReceiverService(db, cfg)
+	handler := receiver.NewHandler(receiverService)
+
 	for _, tt := range testCases {
-		tt := tt //nolint:copyloopvar // it's for stupid Yandex Practicum static test
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -78,9 +85,9 @@ func TestMethods(t *testing.T) {
 
 			switch tt.method {
 			case http.MethodPost:
-				receiver.AddMetric(responseRecorder, request)
+				handler.AddMetric(responseRecorder, request)
 			default:
-				receiver.AddMetric(responseRecorder, request)
+				handler.AddMetric(responseRecorder, request)
 			}
 
 			response := responseRecorder.Result()

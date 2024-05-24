@@ -4,15 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
-	"strconv"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-
 	"metrics/config"
-	log "metrics/pkg/logger"
+	"metrics/internal/log"
 )
 
 const (
@@ -21,20 +17,10 @@ const (
 	IdleTimeout  = 60 * time.Second
 )
 
-func Handler() http.Handler {
-	router := chi.NewRouter()
-	router.Post("/update/{kind}/{name}/{value}", AddMetric)
-	router.Get("/value/{kind}/{name}", GetMetric)
-	router.Get("/", GetAllMetrics)
-
-	return router
-}
-
-func RunServer(ctx context.Context, cfg config.ReceiverConfig) error {
-	hostPort := cfg.Receiver.Host + ":" + strconv.Itoa(cfg.Receiver.Port)
+func RunServer(_ context.Context, handler Handler, cfg config.ReceiverConfig) error {
 	server := http.Server{
-		Addr:                         hostPort,
-		Handler:                      Handler(),
+		Addr:                         string(cfg.Receiver.Address),
+		Handler:                      handler.InitRoutes(),
 		DisableGeneralOptionsHandler: false,
 		TLSConfig:                    nil,
 		ReadTimeout:                  ReadTimeout,
@@ -46,22 +32,20 @@ func RunServer(ctx context.Context, cfg config.ReceiverConfig) error {
 		ConnState:                    nil,
 		ErrorLog:                     nil,
 		BaseContext:                  nil,
-		ConnContext: func(_ context.Context, _ net.Conn) context.Context {
-			return ctx
-		},
+		ConnContext:                  nil,
 	}
 
-	log.Info("server starting", log.StringAttr("host:port", hostPort)) //nolint:contextcheck // false positive
+	log.Info("server starting", //nolint:contextcheck // no ctx
+		log.StringAttr("host:port", string(cfg.Receiver.Address)))
+
 	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-		return fmt.Errorf("could not start server: %w", err)
+		return fmt.Errorf("server error: %w", err)
+	}
+
+	err := server.Close()
+	if err != nil {
+		return fmt.Errorf("could not close server: %w", err)
 	}
 
 	return nil
-}
-
-func HandlerMux() http.Handler {
-	router := http.NewServeMux()
-	router.HandleFunc(http.MethodPost+" /update/{kind}/{name}/{value}", AddMetric)
-
-	return router
 }

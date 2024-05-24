@@ -4,40 +4,49 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
-	"metrics/internal/model"
-	"metrics/internal/service"
-	log "metrics/pkg/logger"
+	"metrics/internal/log"
+	"metrics/internal/receiver/internal/service"
 )
 
-type KeyServiceCtx struct{}
+type Handler struct {
+	service service.Receiver
+}
 
-func AddMetric(w http.ResponseWriter, r *http.Request) {
+func NewHandler(service service.Receiver) Handler {
+	return Handler{service: service}
+}
+
+func (h Handler) InitRoutes() http.Handler {
+	router := chi.NewRouter()
+
+	router.Post("/update/{kind}/{name}/{value}", h.AddMetric)
+	router.Get("/value/{kind}/{name}", h.GetMetric)
+	router.Get("/", h.GetAllMetrics)
+
+	return router
+}
+
+func (h Handler) AddMetric(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 
 		return
 	}
 
-	metricsGetter, ok := r.Context().Value(KeyServiceCtx{}).(service.MetricsGetter)
-	if !ok {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	kind := chi.URLParam(r, "kind")
 
-		return
-	}
-
-	kind := chi.URLParam(r, "kind") // for mux: kind := r.PathValue("kind")
-
-	name := chi.URLParam(r, "name") // for mux: name := r.PathValue("name")
+	name := chi.URLParam(r, "name")
 	if name == "" {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 
 		return
 	}
 
-	valueString := chi.URLParam(r, "value") // for mux: valueString := r.PathValue("value")
+	valueString := chi.URLParam(r, "value")
 	if valueString == "" {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 
@@ -53,12 +62,8 @@ func AddMetric(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		_, err = metricsGetter.AddCounter(name, value)
-		if err != nil {
-			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		_ = h.service.AddCounter(name, value)
 
-			return
-		}
 	case "gauge":
 		value, err := strconv.ParseFloat(valueString, 64)
 		if err != nil {
@@ -67,12 +72,8 @@ func AddMetric(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		_, err = metricsGetter.AddGauge(name, value)
-		if err != nil {
-			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		_ = h.service.AddGauge(name, value)
 
-			return
-		}
 	default:
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 
@@ -83,23 +84,16 @@ func AddMetric(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func GetMetric(w http.ResponseWriter, r *http.Request) {
+func (h Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 
 		return
 	}
 
-	metricsGetter, ok := r.Context().Value(KeyServiceCtx{}).(service.MetricsGetter)
-	if !ok {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	kind := chi.URLParam(r, "kind")
 
-		return
-	}
-
-	kind := chi.URLParam(r, "kind") // for mux: kind := r.PathValue("kind")
-
-	name := chi.URLParam(r, "name") // for mux: name := r.PathValue("name")
+	name := chi.URLParam(r, "name")
 	if name == "" {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 
@@ -108,29 +102,28 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 
 	switch kind {
 	case "counter":
-		counters, err := metricsGetter.GetCounters(name)
+		counter, err := h.service.GetCounter(name)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 
 			return
 		}
 
-		var counterValues int64
-
-		for _, counter := range counters {
-			counterValues += counter.Value
-		}
-
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 
-		_, err = io.WriteString(w, strconv.Itoa(int(counterValues)))
+		_, err = io.WriteString(w, strconv.FormatInt(counter.Value, 10))
 		if err != nil {
-			log.Error("Error writing response", log.ErrAttr(err)) //nolint:contextcheck // false positive
+			log.Error("Error writing response", //nolint:contextcheck // no ctx
+				log.ErrAttr(err))
+
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
+			return
 		}
 
 	case "gauge":
-		gauge, err := metricsGetter.GetGauge(name)
+		gauge, err := h.service.GetGauge(name)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 
@@ -144,7 +137,11 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 
 		_, err = io.WriteString(w, gaugeValue)
 		if err != nil {
-			log.Error("Error writing response", log.ErrAttr(err)) //nolint:contextcheck // false positive
+			log.Error("Error writing response", //nolint:contextcheck // no ctx
+				log.ErrAttr(err))
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
+			return
 		}
 	default:
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
@@ -153,67 +150,68 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetAllMetrics(w http.ResponseWriter, r *http.Request) {
+func (h Handler) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 
 		return
 	}
 
-	metricsGetter, ok := r.Context().Value(KeyServiceCtx{}).(service.MetricsGetter)
-	if !ok {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-
-		return
-	}
-
 	var answer string
 
-	counters := metricsGetter.GetAllCounters()
+	counters := h.service.GetAllCounters()
 	if len(counters) == 0 {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 
 		return
 	}
 
-	answer = prepareAllCounters(counters)
+	answer = h.prepareAllCounters(counters)
 
-	gauges := metricsGetter.GetAllGauges()
+	gauges := h.service.GetAllGauges()
 	if len(gauges) == 0 {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 
 		return
 	}
 
-	answer += prepareAllGauges(gauges)
+	answer += h.prepareAllGauges(gauges)
 
 	_, err := io.WriteString(w, answer)
 	if err != nil {
-		log.Error("Error writing response", log.ErrAttr(err)) //nolint:contextcheck // false positive
+		log.Error("Error writing response", //nolint:contextcheck // no ctx
+			log.ErrAttr(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
+		return
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 }
 
-func prepareAllCounters(counters [][]model.Counter) string {
-	var answer string
+func (Handler) prepareAllCounters(counters []service.Counter) string {
+	var answer strings.Builder
 
 	for _, counter := range counters {
-		for _, counterUnit := range counter {
-			answer += counterUnit.Name + " " + strconv.Itoa(int(counterUnit.Value)) + "\n"
-		}
+		_, _ = answer.WriteString(counter.Name)                         // always returns nil error
+		_, _ = answer.WriteString(" ")                                  // always returns nil error
+		_, _ = answer.WriteString(strconv.FormatInt(counter.Value, 10)) // always returns nil error
+		_, _ = answer.WriteString("\n")                                 // always returns nil error
 	}
 
-	return answer
+	return answer.String()
 }
 
-func prepareAllGauges(gauges []model.Gauge) string {
-	var answer string
+func (Handler) prepareAllGauges(gauges []service.Gauge) string {
+	var answer strings.Builder
 
 	for _, gauge := range gauges {
-		answer += gauge.Name + " " + strconv.FormatFloat(gauge.Value, 'f', -1, 64) + "\n"
+		_, _ = answer.WriteString(gauge.Name)                                    // always returns nil error
+		_, _ = answer.WriteString(" ")                                           // always returns nil error
+		_, _ = answer.WriteString(strconv.FormatFloat(gauge.Value, 'f', -1, 64)) // always returns nil error
+		_, _ = answer.WriteString("\n")                                          // always returns nil error
 	}
 
-	return answer
+	return answer.String()
 }

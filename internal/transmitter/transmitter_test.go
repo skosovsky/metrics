@@ -1,10 +1,8 @@
 package transmitter_test
 
 import (
-	"reflect"
 	"testing"
 
-	"metrics/config"
 	"metrics/internal/transmitter"
 )
 
@@ -17,18 +15,15 @@ func TestNewMetrics(t *testing.T) {
 	}{
 		{
 			name: "NewMetrics",
-			want: &transmitter.Metrics{}, //nolint:exhaustruct // empty
+			want: new(transmitter.Metrics),
 		},
 	}
 
-	var cfg config.TransmitterConfig
-
 	for _, tt := range tests {
-		tt := tt //nolint:copyloopvar // it's for stupid Yandex Practicum static test
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := transmitter.NewMetrics(cfg); reflect.DeepEqual(got, tt.want) {
+			if got := transmitter.NewMetrics(); got == tt.want {
 				t.Errorf("NewMetrics() = %v, want %v", got, tt.want)
 			}
 		})

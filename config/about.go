@@ -2,8 +2,12 @@ package config
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"runtime/debug"
 	"strings"
+
+	"metrics/internal/log"
 )
 
 var ErrInfoUnknown = errors.New("app name or revision unknown")
@@ -33,4 +37,20 @@ func NewAppInfo() (Application, error) {
 	}
 
 	return application, nil
+}
+
+func LogAppInfo() error {
+	if os.Getenv("APP_MODE") == testMode || os.Getenv("APP_MODE") == prodMode {
+		return nil
+	}
+
+	appInfo, err := NewAppInfo()
+	if err != nil {
+		return fmt.Errorf("get app info: %w", err)
+	}
+
+	log.Info("appInfo",
+		log.AnyAttr("app", fmt.Sprint(appInfo)))
+
+	return nil
 }

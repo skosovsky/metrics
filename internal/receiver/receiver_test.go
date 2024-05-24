@@ -1,9 +1,7 @@
 package receiver_test
 
 import (
-	"context"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,18 +11,17 @@ import (
 
 	"metrics/config"
 	"metrics/internal/receiver"
-	"metrics/internal/service"
-	"metrics/internal/store"
+	"metrics/internal/receiver/internal/service"
+	"metrics/internal/receiver/internal/store"
 )
 
-func TestRouting(t *testing.T) { // TODO: понять как же мы тут тестируем роутинг
+func TestRouting(t *testing.T) {
 	t.Parallel()
 
 	type want struct {
 		path   string
 		status int
 		body   string
-		// answer string // TODO: add later
 	}
 
 	testCases := []struct {
@@ -37,24 +34,36 @@ func TestRouting(t *testing.T) { // TODO: понять как же мы тут �
 				path:   "/update/gauge/NumGC/5.11",
 				status: 200,
 				body:   "",
-				// answer: "https://ya.ru", // TODO: add later
+			},
+		},
+		{
+			name: "with incorrect data",
+			want: want{
+				path:   "/update/gauge/NumGC/ab",
+				status: 400,
+				body:   "Bad Request\n",
+			},
+		},
+		{
+			name: "with incorrect path",
+			want: want{
+				path:   "/delete/gauge/NumGC/ab",
+				status: 404,
+				body:   "404 page not found\n",
 			},
 		},
 	}
 
-	db, _ := store.NewDummyStore()
+	db := store.NewDummyStore()
 	cfg, _ := config.NewReceiverConfig()
-	metricsGetter := service.NewMetricsGetterService(db, cfg)
-	ctx := context.WithValue(context.Background(), receiver.KeyServiceCtx{}, metricsGetter)
+	receiverService := service.NewReceiverService(db, cfg)
+	handler := receiver.NewHandler(receiverService)
 
-	server := httptest.NewUnstartedServer(receiver.Handler())
-	server.Config.ConnContext = func(_ context.Context, _ net.Conn) context.Context { return ctx }
-	server.Start()
+	server := httptest.NewServer(handler.InitRoutes())
 
 	t.Cleanup(server.Close)
 
 	for _, tt := range testCases {
-		tt := tt //nolint:copyloopvar // it's for stupid Yandex Practicum static test
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
