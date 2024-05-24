@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"metrics/config"
+	log "metrics/pkg/logger"
 )
 
 const (
@@ -29,8 +30,8 @@ func Handler() http.Handler {
 	return router
 }
 
-func RunServer(ctx context.Context, cfg config.Config) error {
-	hostPort := cfg.Server.Host + ":" + strconv.Itoa(cfg.Server.Port)
+func RunServer(ctx context.Context, cfg config.ReceiverConfig) error {
+	hostPort := cfg.Receiver.Host + ":" + strconv.Itoa(cfg.Receiver.Port)
 	server := http.Server{
 		Addr:                         hostPort,
 		Handler:                      Handler(),
@@ -50,6 +51,7 @@ func RunServer(ctx context.Context, cfg config.Config) error {
 		},
 	}
 
+	log.Info("server starting", log.StringAttr("host:port", hostPort)) //nolint:contextcheck // false positive
 	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("could not start server: %w", err)
 	}
