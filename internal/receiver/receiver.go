@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
 	"metrics/config"
 )
 
@@ -19,8 +21,10 @@ const (
 )
 
 func Handler() http.Handler {
-	router := http.NewServeMux()
-	router.HandleFunc(http.MethodPost+" /update/{kind}/{name}/{value}", AddMetric)
+	router := chi.NewRouter()
+	router.Post("/update/{kind}/{name}/{value}", AddMetric)
+	router.Get("/value/{kind}/{name}", GetMetric)
+	router.Get("/", GetAllMetrics)
 
 	return router
 }
@@ -51,4 +55,11 @@ func RunServer(ctx context.Context, cfg config.Config) error {
 	}
 
 	return nil
+}
+
+func HandlerMux() http.Handler {
+	router := http.NewServeMux()
+	router.HandleFunc(http.MethodPost+" /update/{kind}/{name}/{value}", AddMetric)
+
+	return router
 }

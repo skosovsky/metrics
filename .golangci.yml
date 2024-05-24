@@ -49,13 +49,18 @@ linters-settings:
         # List of allowed packages.
         allow:
           - $gostd
-          - github.com/OpenPeeDeeP
         # Packages that are not allowed where the value is a suggestion.
         deny:
-          - pkg: "github.com/sirupsen/logrus"
-            desc: not allowed
-          - pkg: "github.com/pkg/errors"
-            desc: Should be replaced by standard lib errors package
+          - pkg: io/ioutil
+            desc: "recommendation: io/os, reason: https://tip.golang.org/doc/go1.16#ioutil"
+          - pkg: $log
+            desc: "recommendation: slog or internal, reason: log is not structured logger"
+          - pkg: github.com/golang/protobuf
+            desc: "recommendation: google.golang.org/protobuf, reason: https://developers.google.com/protocol-buffers/docs/reference/go/faq#modules"
+          - pkg: github.com/satori/go.uuid
+            desc: "recommendation: github.com/google/uuid, reason: satori's package is not maintained"
+          - pkg: github.com/pkg/error
+            desc: "recommendation: errors, reason: should be replaced by standard lib errors package"
 
   exhaustruct:
     # List of regular expressions to exclude struct packages and their names from checks.
@@ -151,24 +156,6 @@ linters-settings:
     exclude: []
     period: true
     scope: toplevel
-
-  gomodguard:
-    blocked:
-      # List of blocked modules.
-      # Default: []
-      modules:
-        - github.com/golang/protobuf:
-            recommendations:
-              - google.golang.org/protobuf
-            reason: "see https://developers.google.com/protocol-buffers/docs/reference/go/faq#modules"
-        - github.com/satori/go.uuid:
-            recommendations:
-              - github.com/google/uuid
-            reason: "satori's package is not maintained"
-        - github.com/gofrs/uuid:
-            recommendations:
-              - github.com/gofrs/uuid/v5
-            reason: "gofrs' package was not go module before v5"
 
   govet:
     # Enable all analyzers.

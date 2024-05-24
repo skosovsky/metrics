@@ -50,6 +50,20 @@ func (m *MemoryStore) GetGauge(name string) (model.Gauge, bool) {
 	return gauge, true
 }
 
+func (m *MemoryStore) GetAllGauges() []model.Gauge {
+	gauges := make([]model.Gauge, 0, len(m.memoryGauge))
+
+	m.muGauge.RLock()
+
+	for _, gauge := range m.memoryGauge {
+		gauges = append(gauges, gauge)
+	}
+
+	m.muGauge.RUnlock()
+
+	return gauges
+}
+
 func (m *MemoryStore) GetCounters(name string) ([]model.Counter, bool) {
 	m.muCounters.RLock()
 	counters, ok := m.memoryCounters[name]
@@ -60,4 +74,18 @@ func (m *MemoryStore) GetCounters(name string) ([]model.Counter, bool) {
 	}
 
 	return counters, true
+}
+
+func (m *MemoryStore) GetAllCounters() [][]model.Counter {
+	counters := make([][]model.Counter, 0, len(m.memoryCounters))
+
+	m.muCounters.RLock()
+
+	for _, counter := range m.memoryCounters {
+		counters = append(counters, counter)
+	}
+
+	m.muCounters.RUnlock()
+
+	return counters
 }

@@ -64,6 +64,14 @@ func (m MetricsGetter) GetGauge(gaugeName string) (model.Gauge, error) {
 	return gauge, nil
 }
 
+func (m MetricsGetter) GetAllGauges() []model.Gauge {
+	gauges := m.store.GetAllGauges()
+
+	log.Info("all gauges returned", log.AnyAttr("gauge", gauges))
+
+	return gauges
+}
+
 func (m MetricsGetter) GetCounters(counterName string) ([]model.Counter, error) {
 	counters, ok := m.store.GetCounters(counterName)
 	if !ok {
@@ -73,4 +81,12 @@ func (m MetricsGetter) GetCounters(counterName string) ([]model.Counter, error) 
 	log.Info("counters returned", log.AnyAttr("counters", counters))
 
 	return counters, nil
+}
+
+func (m MetricsGetter) GetAllCounters() [][]model.Counter {
+	counters := m.store.GetAllCounters()
+
+	log.Info("all counters returned", log.AnyAttr("counters", counters))
+
+	return counters
 }
