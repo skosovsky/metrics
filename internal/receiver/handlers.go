@@ -23,9 +23,9 @@ func NewHandler(service service.Receiver) Handler {
 func (h Handler) InitRoutes() http.Handler {
 	router := chi.NewRouter()
 
-	router.Post("/update/{kind}/{name}/{value}", h.AddMetric)
-	router.Get("/value/{kind}/{name}", h.GetMetric)
-	router.Get("/", h.GetAllMetrics)
+	router.Post("/update/{kind}/{name}/{value}", WithLogging(h.AddMetric))
+	router.Get("/value/{kind}/{name}", WithLogging(h.GetMetric))
+	router.Get("/", WithLogging(h.GetAllMetrics))
 
 	return router
 }
