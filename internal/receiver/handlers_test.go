@@ -44,8 +44,8 @@ func TestMethods(t *testing.T) {
 			method:  http.MethodGet,
 			request: "/1",
 			want: want{
-				code:        405,
-				response:    "Method Not Allowed\n",
+				code:        404,
+				response:    "Not Found\n",
 				contentType: "text/plain; charset=utf-8",
 			},
 		},
@@ -54,8 +54,8 @@ func TestMethods(t *testing.T) {
 			method:  http.MethodPut,
 			request: "/1",
 			want: want{
-				code:        405,
-				response:    "Method Not Allowed\n",
+				code:        404,
+				response:    "Not Found\n",
 				contentType: "text/plain; charset=utf-8",
 			},
 		},
@@ -64,8 +64,8 @@ func TestMethods(t *testing.T) {
 			method:  http.MethodDelete,
 			request: "/1",
 			want: want{
-				code:        405,
-				response:    "Method Not Allowed\n",
+				code:        404,
+				response:    "Not Found\n",
 				contentType: "text/plain; charset=utf-8",
 			},
 		},

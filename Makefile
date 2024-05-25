@@ -21,7 +21,7 @@ test-static: ## Test static
 	@echo "Testing ${APP} - static..."
 	go vet -vettool=$(which ./tests/statictest-darwin-arm64) ./...
 
-.PHONY: test_all lint tests build-test test1 test2 test3 test4 test5 test6
+.PHONY: test_all lint tests build-test test1 test2 test3 test4 test5 test6 test7
 build-test: ## Build an application
 	@echo "Building ${APP} ..."
 	go mod tidy
@@ -51,17 +51,21 @@ test3: ## Test increment #3
 
 test4: ## Test increment #4
 	@echo "Testing ${APP} - increment 4..."
-	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration4$$" -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8001 -source-path=.
+	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration4$$" -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8004 -source-path=.
 
 test5: ## Test increment #5
 	@echo "Testing ${APP} - increment 5..."
-	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration5$$" -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8002 -source-path=.
+	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration5$$" -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8005 -source-path=.
 
 test6: ## Test increment #6
 	@echo "Testing ${APP} - increment 6..."
-	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration6$$" -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8003 -source-path=.
+	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration6$$" -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8006 -source-path=.
 
-test_all: lint tests build-test test1 test2 test3 test4 test5 test6
+test7: ## Test increment #7
+	@echo "Testing ${APP} - increment 7..."
+	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration7$$" -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8007 -source-path=.
+
+test_all: lint tests build-test test1 test2 test3 test4 test5 test6 test7
 	@echo "All tests completed."
 
 run: ## Run an application

@@ -49,7 +49,7 @@ func TestRouting(t *testing.T) {
 			want: want{
 				path:   "/delete/gauge/NumGC/ab",
 				status: 404,
-				body:   "404 page not found\n",
+				body:   "Not Found\n",
 			},
 		},
 	}

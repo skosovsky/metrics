@@ -8,7 +8,7 @@ import (
 	"metrics/internal/log"
 )
 
-func WithLogging(next http.HandlerFunc) http.HandlerFunc {
+func WithLogging(next http.Handler) http.Handler {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
@@ -33,7 +33,7 @@ func WithLogging(next http.HandlerFunc) http.HandlerFunc {
 			log.IntAttr("size", respData.size))
 	}
 
-	return logFn
+	return http.HandlerFunc(logFn)
 }
 
 type (

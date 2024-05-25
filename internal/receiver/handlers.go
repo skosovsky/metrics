@@ -6,9 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-chi/chi/v5"
-
 	"metrics/internal/log"
+	"metrics/internal/receiver/internal/mux"
 	"metrics/internal/receiver/internal/service"
 )
 
@@ -21,32 +20,33 @@ func NewHandler(service service.Receiver) Handler {
 }
 
 func (h Handler) InitRoutes() http.Handler {
-	router := chi.NewRouter()
+	router := mux.NewRouter()
 
-	router.Post("/update/{kind}/{name}/{value}", WithLogging(h.AddMetric))
-	router.Get("/value/{kind}/{name}", WithLogging(h.GetMetric))
-	router.Get("/", WithLogging(h.GetAllMetrics))
+	router.Use(WithLogging)
+
+	router.Post("/", h.BadRequest)
+	router.Post("/update/{kind}/{name}/{value}", h.AddMetric)
+	router.Get("/value/{kind}/{name}", h.GetMetric)
+	router.Get("/", h.GetAllMetrics)
 
 	return router
 }
 
+func (h Handler) BadRequest(w http.ResponseWriter, _ *http.Request) {
+	http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+}
+
 func (h Handler) AddMetric(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	kind := r.PathValue("kind")
 
-		return
-	}
-
-	kind := chi.URLParam(r, "kind")
-
-	name := chi.URLParam(r, "name")
+	name := r.PathValue("name")
 	if name == "" {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 
 		return
 	}
 
-	valueString := chi.URLParam(r, "value")
+	valueString := r.PathValue("value")
 	if valueString == "" {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 
@@ -85,15 +85,9 @@ func (h Handler) AddMetric(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	kind := r.PathValue("kind")
 
-		return
-	}
-
-	kind := chi.URLParam(r, "kind")
-
-	name := chi.URLParam(r, "name")
+	name := r.PathValue("name")
 	if name == "" {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 
@@ -150,13 +144,7 @@ func (h Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h Handler) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-
-		return
-	}
-
+func (h Handler) GetAllMetrics(w http.ResponseWriter, _ *http.Request) {
 	var answer string
 
 	counters := h.service.GetAllCounters()
