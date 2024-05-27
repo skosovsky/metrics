@@ -23,7 +23,7 @@ func WithLogging(next http.Handler) http.Handler {
 
 		duration := time.Since(start)
 
-		log.Info("request", //nolint:contextcheck // no ctx
+		log.Info("requestBody", //nolint:contextcheck // no ctx
 			log.StringAttr("uri", r.RequestURI),
 			log.StringAttr("method", r.Method),
 			log.StringAttr("duration", duration.String()))

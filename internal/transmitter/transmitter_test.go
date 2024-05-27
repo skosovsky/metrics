@@ -3,19 +3,28 @@ package transmitter_test
 import (
 	"testing"
 
+	"metrics/internal/log"
 	"metrics/internal/transmitter"
 )
 
+func prepare(t *testing.T) {
+	t.Helper()
+
+	log.Prepare()
+}
+
 func TestNewMetrics(t *testing.T) {
+	prepare(t)
+
 	t.Parallel()
 
 	tests := []struct {
 		name string
-		want *transmitter.Metrics
+		want *transmitter.MetricsStore
 	}{
 		{
 			name: "NewMetrics",
-			want: new(transmitter.Metrics),
+			want: new(transmitter.MetricsStore),
 		},
 	}
 
