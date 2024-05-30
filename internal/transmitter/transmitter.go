@@ -2,6 +2,7 @@ package transmitter
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,8 +19,9 @@ import (
 )
 
 const (
-	clientTimeout = 10 * time.Second
-	baseProtocol  = "http://"
+	clientTimeout      = 10 * time.Second
+	baseProtocol       = "http://"
+	methodCompressGzip = "gzip"
 )
 
 type (
@@ -216,6 +218,7 @@ func (*MetricsStore) sendRequest(urls []string) {
 		}
 
 		request.Header.Set("Content-Type", contentType)
+		request.Header.Del("Accept-Encoding")
 
 		response, err := client.Do(request)
 		if err != nil {
@@ -246,6 +249,22 @@ func (*MetricsStore) sendRequest(urls []string) {
 	}
 }
 
+func (*MetricsStore) compress(data []byte) ([]byte, error) {
+	var buf bytes.Buffer
+
+	gzipWriter := gzip.NewWriter(&buf)
+
+	if _, err := gzipWriter.Write(data); err != nil {
+		return nil, fmt.Errorf("compressing data: %w", err)
+	}
+
+	if err := gzipWriter.Close(); err != nil {
+		return nil, fmt.Errorf("closing gzip writer: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
 func (m *MetricsStore) sendRequestJSON(cfg config.Transmitter, jsons [][]byte) {
 	const contentType = "application/json"
 	var client = &http.Client{
@@ -256,21 +275,32 @@ func (m *MetricsStore) sendRequestJSON(cfg config.Transmitter, jsons [][]byte) {
 	}
 
 	for _, jsonMetric := range jsons {
-		request, err := http.NewRequest(http.MethodPost, baseProtocol+cfg.Address.String()+"/update/", bytes.NewReader(jsonMetric)) //nolint:noctx //TODO: добавить контекст
+		compressedJSONMetric, err := m.compress(jsonMetric)
+		if err != nil {
+			log.Error("Failed to compress json",
+				log.ErrAttr(err),
+				log.StringAttr("url", string(jsonMetric)))
+
+			continue
+		}
+
+		request, err := http.NewRequest(http.MethodPost, baseProtocol+cfg.Address.String()+"/update/", bytes.NewReader(compressedJSONMetric)) //nolint:noctx //TODO: добавить контекст
 		if err != nil {
 			log.Error("Failed to create request",
 				log.ErrAttr(err),
 				log.StringAttr("url", string(jsonMetric)))
+
+			continue
 		}
 
 		request.Header.Set("Content-Type", contentType)
+		request.Header.Set("Content-Encoding", methodCompressGzip)
 
 		response, err := client.Do(request)
 		if err != nil {
 			log.Error("Failed to send request with body",
 				log.ErrAttr(err),
-				log.StringAttr("json", string(jsonMetric)),
-			)
+				log.StringAttr("json", string(jsonMetric)))
 
 			continue
 		}

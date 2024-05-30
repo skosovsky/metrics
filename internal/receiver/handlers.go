@@ -3,6 +3,7 @@ package receiver
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"net/http"
 	"strconv"
@@ -39,6 +40,7 @@ func (h Handler) InitRoutes() http.Handler {
 	router := mux.NewRouter()
 
 	router.Use(WithLogging)
+	router.Use(WithGzipCompress)
 
 	router.Post("/", h.BadRequest)
 	router.Post("/update/{$}", h.AddMetricJSON)
@@ -97,6 +99,7 @@ func (h Handler) AddMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Content-Encoding", "gzip") //TODO: костыль
 	w.WriteHeader(http.StatusOK)
 
 	err = json.NewEncoder(w).Encode(metric)
@@ -279,6 +282,7 @@ func (h Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) { //nolin
 		metric.Delta = &counter.Value
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Content-Encoding", "gzip") //TODO: костыль
 		w.WriteHeader(http.StatusOK)
 
 		err = json.NewEncoder(w).Encode(metric)
@@ -302,6 +306,7 @@ func (h Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) { //nolin
 		metric.Value = &gauge.Value
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Content-Encoding", "gzip") //TODO: костыль
 		w.WriteHeader(http.StatusOK)
 
 		err = json.NewEncoder(w).Encode(metric)
@@ -341,13 +346,34 @@ func (h Handler) GetAllMetrics(w http.ResponseWriter, _ *http.Request) {
 
 	answer += h.prepareAllGauges(gauges)
 
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	const templateHTML = `
+		<!DOCTYPE html>
+		<html lang="en">
+
+		<body>
+			<pre>{{.}}</pre>
+		</body>
+		</html>
+	`
+
+	templateWithValues, err := template.New("all metrics template").Parse(templateHTML)
+	if err != nil {
+		log.Error("error parsing template", //nolint:contextcheck // no ctx
+			log.ErrAttr(err))
+
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Encoding", "gzip") //TODO: костыль
 	w.WriteHeader(http.StatusOK)
 
-	_, err := io.WriteString(w, answer)
-	if err != nil {
-		log.Error("Error writing response", //nolint:contextcheck // no ctx
+	if err = templateWithValues.Execute(w, answer); err != nil {
+		log.Error("error executing template", //nolint:contextcheck // no ctx
 			log.ErrAttr(err))
+
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 		return
