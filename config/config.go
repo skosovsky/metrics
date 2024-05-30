@@ -21,11 +21,11 @@ type (
 		Mode string `env:"APP_MODE" validate:"required,oneof=development production test"`
 	}
 
-	Receiver struct {
+	Consumer struct {
 		Address Address `env:"ADDRESS" validate:"url"`
 	}
 
-	Transmitter struct {
+	Producer struct {
 		Address        Address `env:"ADDRESS"         validate:"url"`
 		ReportInterval int     `env:"REPORT_INTERVAL" validate:"min=1"`
 		PollInterval   int     `env:"POLL_INTERVAL"   validate:"min=1"`
@@ -36,41 +36,41 @@ type (
 		DBAddress string `env:"DB_ADDRESS"`
 	}
 
-	ReceiverConfig struct {
+	ConsumerConfig struct {
 		App      App
-		Receiver Receiver
+		Consumer Consumer
 		Store    Store
 	}
 
-	TransmitterConfig struct {
-		App         App
-		Transmitter Transmitter
+	ProducerConfig struct {
+		App      App
+		Producer Producer
 	}
 )
 
-func NewReceiverConfig() (ReceiverConfig, error) {
-	var config ReceiverConfig
+func NewConsumerConfig() (ConsumerConfig, error) {
+	var config ConsumerConfig
 
-	err := config.Receiver.Address.Set("localhost:8080")
+	err := config.Consumer.Address.Set("localhost:8080")
 	if err != nil {
-		return ReceiverConfig{}, fmt.Errorf("failed to set default value: %w", err)
+		return ConsumerConfig{}, fmt.Errorf("failed to set default value: %w", err)
 	}
 
-	flag.Var(&config.Receiver.Address, "a", "Server address host:port")
+	flag.Var(&config.Consumer.Address, "a", "Server address host:port")
 	flag.Parse()
 
 	if err = env.Parse(&config); err != nil {
-		return ReceiverConfig{}, fmt.Errorf("failed to parse config: %w", err)
+		return ConsumerConfig{}, fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	if err = config.validate(); err != nil {
-		return ReceiverConfig{}, fmt.Errorf("failed to validate config: %w", err)
+		return ConsumerConfig{}, fmt.Errorf("failed to validate config: %w", err)
 	}
 
 	return config, nil
 }
 
-func (c ReceiverConfig) validate() error {
+func (c ConsumerConfig) validate() error {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	err := validate.Struct(c)
@@ -81,32 +81,32 @@ func (c ReceiverConfig) validate() error {
 	return nil
 }
 
-func NewTransmitterConfig() (TransmitterConfig, error) {
-	var config TransmitterConfig
+func NewProducerConfig() (ProducerConfig, error) {
+	var config ProducerConfig
 
-	err := config.Transmitter.Address.Set("localhost:8080")
+	err := config.Producer.Address.Set("localhost:8080")
 	if err != nil {
-		return TransmitterConfig{}, fmt.Errorf("failed to set default value: %w", err)
+		return ProducerConfig{}, fmt.Errorf("failed to set default value: %w", err)
 	}
 
-	flag.Var(&config.Transmitter.Address, "a", "Server address host:port")
-	flag.IntVar(&config.Transmitter.PollInterval, "p", 2, "Polling interval in seconds")
-	flag.IntVar(&config.Transmitter.ReportInterval, "r", 10, "Reporting interval in seconds")
+	flag.Var(&config.Producer.Address, "a", "Server address host:port")
+	flag.IntVar(&config.Producer.PollInterval, "p", 2, "Polling interval in seconds")
+	flag.IntVar(&config.Producer.ReportInterval, "r", 10, "Reporting interval in seconds")
 
 	flag.Parse()
 
 	if err = env.Parse(&config); err != nil {
-		return TransmitterConfig{}, fmt.Errorf("failed to parse config: %w", err)
+		return ProducerConfig{}, fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	if err = config.validate(); err != nil {
-		return TransmitterConfig{}, fmt.Errorf("failed to validate config: %w", err)
+		return ProducerConfig{}, fmt.Errorf("failed to validate config: %w", err)
 	}
 
 	return config, nil
 }
 
-func (c TransmitterConfig) validate() error {
+func (c ProducerConfig) validate() error {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	err := validate.Struct(c)

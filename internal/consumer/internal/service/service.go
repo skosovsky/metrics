@@ -34,25 +34,25 @@ type Store interface {
 	GetAllCounters() []Counter
 }
 
-type Receiver struct {
+type Consumer struct {
 	store  Store
-	config config.ReceiverConfig
+	config config.ConsumerConfig
 }
 
-func NewReceiverService(store Store, config config.ReceiverConfig) Receiver {
-	return Receiver{
+func NewConsumerService(store Store, config config.ConsumerConfig) Consumer {
+	return Consumer{
 		store:  store,
 		config: config,
 	}
 }
 
-func (r Receiver) AddGauge(gaugeName string, gaugeValue float64) Gauge {
+func (c Consumer) AddGauge(gaugeName string, gaugeValue float64) Gauge {
 	gauge := Gauge{
 		Name:  gaugeName,
 		Value: gaugeValue,
 	}
 
-	r.store.AddGauge(gauge)
+	c.store.AddGauge(gauge)
 
 	log.Debug("gauge added",
 		log.StringAttr("name", gauge.Name),
@@ -61,13 +61,13 @@ func (r Receiver) AddGauge(gaugeName string, gaugeValue float64) Gauge {
 	return gauge
 }
 
-func (r Receiver) AddCounter(counterName string, counterValue int64) Counter {
+func (c Consumer) AddCounter(counterName string, counterValue int64) Counter {
 	counter := Counter{
 		Name:  counterName,
 		Value: counterValue,
 	}
 
-	r.store.AddCounter(counter)
+	c.store.AddCounter(counter)
 
 	log.Debug("counter added",
 		log.StringAttr("name", counter.Name),
@@ -76,8 +76,8 @@ func (r Receiver) AddCounter(counterName string, counterValue int64) Counter {
 	return counter
 }
 
-func (r Receiver) GetGauge(gaugeName string) (Gauge, error) {
-	gauge, err := r.store.GetGauge(gaugeName)
+func (c Consumer) GetGauge(gaugeName string) (Gauge, error) {
+	gauge, err := c.store.GetGauge(gaugeName)
 	if err != nil {
 		return Gauge{}, ErrGaugeNotFound
 	}
@@ -89,8 +89,8 @@ func (r Receiver) GetGauge(gaugeName string) (Gauge, error) {
 	return gauge, nil
 }
 
-func (r Receiver) GetAllGauges() []Gauge {
-	gauges := r.store.GetAllGauges()
+func (c Consumer) GetAllGauges() []Gauge {
+	gauges := c.store.GetAllGauges()
 
 	log.Debug("all gauges returned",
 		log.StringAttr("gauges", fmt.Sprintf("%v", gauges)))
@@ -98,8 +98,8 @@ func (r Receiver) GetAllGauges() []Gauge {
 	return gauges
 }
 
-func (r Receiver) GetCounter(counterName string) (Counter, error) {
-	counter, err := r.store.GetCounter(counterName)
+func (c Consumer) GetCounter(counterName string) (Counter, error) {
+	counter, err := c.store.GetCounter(counterName)
 	if err != nil {
 		return Counter{}, ErrCounterNotFound
 	}
@@ -111,8 +111,8 @@ func (r Receiver) GetCounter(counterName string) (Counter, error) {
 	return counter, nil
 }
 
-func (r Receiver) GetAllCounters() []Counter {
-	counters := r.store.GetAllCounters()
+func (c Consumer) GetAllCounters() []Counter {
+	counters := c.store.GetAllCounters()
 
 	log.Debug("all counters returned",
 		log.StringAttr("counters", fmt.Sprintf("%v", counters)))

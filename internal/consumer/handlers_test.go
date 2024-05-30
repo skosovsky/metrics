@@ -1,4 +1,4 @@
-package receiver_test
+package consumer_test
 
 import (
 	"io"
@@ -10,10 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"metrics/config"
+	"metrics/internal/consumer"
+	"metrics/internal/consumer/internal/service"
+	"metrics/internal/consumer/internal/store"
 	"metrics/internal/log"
-	"metrics/internal/receiver"
-	"metrics/internal/receiver/internal/service"
-	"metrics/internal/receiver/internal/store"
 )
 
 func prepare(t *testing.T) {
@@ -94,10 +94,10 @@ func TestPostAddMetric(t *testing.T) {
 		},
 	}
 
-	var cfg config.ReceiverConfig
+	var cfg config.ConsumerConfig
 	db := store.NewDummyStore()
-	receiverService := service.NewReceiverService(db, cfg)
-	handler := receiver.NewHandler(receiverService)
+	consumerService := service.NewConsumerService(db, cfg)
+	handler := consumer.NewHandler(consumerService)
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {

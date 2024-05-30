@@ -1,4 +1,4 @@
-package receiver
+package consumer
 
 import (
 	"encoding/json"
@@ -11,9 +11,9 @@ import (
 
 	"github.com/go-playground/validator/v10"
 
+	"metrics/internal/consumer/internal/mux"
+	"metrics/internal/consumer/internal/service"
 	"metrics/internal/log"
-	"metrics/internal/receiver/internal/mux"
-	"metrics/internal/receiver/internal/service"
 )
 
 const (
@@ -29,10 +29,10 @@ type Metric struct {
 }
 
 type Handler struct {
-	service service.Receiver
+	service service.Consumer
 }
 
-func NewHandler(service service.Receiver) Handler {
+func NewHandler(service service.Consumer) Handler {
 	return Handler{service: service}
 }
 

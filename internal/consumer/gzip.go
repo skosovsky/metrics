@@ -1,4 +1,4 @@
-package receiver
+package consumer
 
 import (
 	"compress/gzip"

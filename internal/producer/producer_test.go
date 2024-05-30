@@ -1,10 +1,10 @@
-package transmitter_test
+package producer_test
 
 import (
 	"testing"
 
 	"metrics/internal/log"
-	"metrics/internal/transmitter"
+	"metrics/internal/producer"
 )
 
 func prepare(t *testing.T) {
@@ -20,11 +20,11 @@ func TestNewMetrics(t *testing.T) {
 
 	tests := []struct {
 		name string
-		want *transmitter.MetricsStore
+		want *producer.MetricsStore
 	}{
 		{
 			name: "NewMetrics",
-			want: new(transmitter.MetricsStore),
+			want: new(producer.MetricsStore),
 		},
 	}
 
@@ -32,7 +32,7 @@ func TestNewMetrics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := transmitter.NewMetrics(); got == tt.want {
+			if got := producer.NewMetrics(); got == tt.want {
 				t.Errorf("NewMetrics() = %v, want %v", got, tt.want)
 			}
 		})

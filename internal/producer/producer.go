@@ -1,4 +1,4 @@
-package transmitter
+package producer
 
 import (
 	"bytes"
@@ -88,7 +88,7 @@ func (m *MetricsStore) Update() {
 	m.Gauges["RandomValue"] = Gauge{Name: "RandomValue", Value: float64(rand.Int())} //nolint:gosec // i know
 }
 
-func (m *MetricsStore) Report(cfg config.Transmitter) error {
+func (m *MetricsStore) Report(cfg config.Producer) error {
 	err := m.reportURL(cfg)
 	if err != nil {
 		return fmt.Errorf("reporting url metrics: %w", err)
@@ -104,7 +104,7 @@ func (m *MetricsStore) Report(cfg config.Transmitter) error {
 	return nil
 }
 
-func (m *MetricsStore) reportURL(cfg config.Transmitter) error {
+func (m *MetricsStore) reportURL(cfg config.Producer) error {
 	urls, err := m.prepareURLs(cfg)
 	if err != nil {
 		return fmt.Errorf("prepare urls: %w", err)
@@ -115,7 +115,7 @@ func (m *MetricsStore) reportURL(cfg config.Transmitter) error {
 	return nil
 }
 
-func (m *MetricsStore) reportJSON(cfg config.Transmitter) error {
+func (m *MetricsStore) reportJSON(cfg config.Producer) error {
 	jsons, err := m.prepareJSONs()
 	if err != nil {
 		return fmt.Errorf("prepare urls: %w", err)
@@ -126,7 +126,7 @@ func (m *MetricsStore) reportJSON(cfg config.Transmitter) error {
 	return nil
 }
 
-func (m *MetricsStore) prepareURLs(cfg config.Transmitter) ([]string, error) {
+func (m *MetricsStore) prepareURLs(cfg config.Producer) ([]string, error) {
 	var err error
 	urls := make([]string, 0, len(m.Gauges)+1)
 
@@ -265,7 +265,7 @@ func (*MetricsStore) compress(data []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (m *MetricsStore) sendRequestJSON(cfg config.Transmitter, jsons [][]byte) {
+func (m *MetricsStore) sendRequestJSON(cfg config.Producer, jsons [][]byte) {
 	const contentType = "application/json"
 	var client = &http.Client{
 		Transport:     nil,

@@ -8,7 +8,7 @@ import (
 	"metrics/internal/log"
 )
 
-func LoadTransmitterEnv() {
+func LoadProducerEnv() {
 	if os.Getenv("APP_MODE") == testMode || os.Getenv("APP_MODE") == prodMode {
 		return
 	}
@@ -26,12 +26,12 @@ func LoadTransmitterEnv() {
 			log.ErrAttr(err),
 		)
 
-		setTransmitterEnvDefault()
+		setProducerEnvDefault()
 	}
 }
 
-func setTransmitterEnvDefault() {
-	var cfg TransmitterConfig
+func setProducerEnvDefault() {
+	var cfg ProducerConfig
 	cfg.App.Mode = testMode
 
 	err := os.Setenv("APP_MODE", cfg.App.Mode)
@@ -43,7 +43,7 @@ func setTransmitterEnvDefault() {
 		log.StringAttr("app mode", cfg.App.Mode))
 }
 
-func LoadReceiverEnv() {
+func LoadConsumerEnv() {
 	if os.Getenv("APP_MODE") == testMode || os.Getenv("APP_MODE") == prodMode {
 		return
 	}
@@ -61,12 +61,12 @@ func LoadReceiverEnv() {
 			log.ErrAttr(err),
 		)
 
-		setReceiverEnvDefault()
+		setConsumerEnvDefault()
 	}
 }
 
-func setReceiverEnvDefault() {
-	var cfg ReceiverConfig
+func setConsumerEnvDefault() {
+	var cfg ConsumerConfig
 	cfg.App.Mode = testMode
 	cfg.Store.DBDriver = "memory"
 	cfg.Store.DBAddress = "map"
