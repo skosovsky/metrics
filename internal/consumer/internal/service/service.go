@@ -8,30 +8,32 @@ import (
 	"metrics/internal/log"
 )
 
-type (
-	Counter struct {
-		Name  string
-		Value int64
-	}
+const (
+	MetricCounter = "counter"
+	MetricGauge   = "gauge"
+)
 
-	Gauge struct {
-		Name  string
-		Value float64
+type (
+	Metric struct {
+		ID         string   `json:"id"              validate:"required"`
+		MetricType string   `json:"type"            validate:"required,oneof=gauge counter"`
+		Delta      *int64   `json:"delta,omitempty"`
+		Value      *float64 `json:"value,omitempty"`
 	}
 )
 
 var (
-	ErrGaugeNotFound   = errors.New("gauge not found")
-	ErrCounterNotFound = errors.New("counter not found")
+	ErrMetricNotFound    = errors.New("metric not found")
+	ErrUnknownMetricType = errors.New("unknown metric type")
+	ErrUnknownDBType     = errors.New("unknown db type")
 )
 
 type Store interface {
-	AddGauge(Gauge)
-	AddCounter(Counter)
-	GetGauge(string) (Gauge, error)
-	GetAllGauges() []Gauge
-	GetCounter(string) (Counter, error)
-	GetAllCounters() []Counter
+	AddGauge(gauge Metric) error
+	AddCounter(counter Metric, increment bool) error
+	GetMetric(id string) (Metric, error)
+	GetAllMetrics() []Metric
+	Close()
 }
 
 type Consumer struct {
@@ -46,76 +48,71 @@ func NewConsumerService(store Store, config config.ConsumerConfig) Consumer {
 	}
 }
 
-func (c Consumer) AddGauge(gaugeName string, gaugeValue float64) Gauge {
-	gauge := Gauge{
-		Name:  gaugeName,
-		Value: gaugeValue,
+func (c Consumer) AddGauge(gaugeName string, gaugeValue float64) (Metric, error) {
+	gauge := Metric{
+		ID:         gaugeName,
+		MetricType: MetricGauge,
+		Value:      &gaugeValue,
+		Delta:      nil,
 	}
 
-	c.store.AddGauge(gauge)
+	if err := c.store.AddGauge(gauge); err != nil {
+		return Metric{}, fmt.Errorf("failed to add gauge %s: %w", gaugeName, err)
+	}
 
 	log.Debug("gauge added",
-		log.StringAttr("name", gauge.Name),
-		log.Float64Attr("gauge", gauge.Value))
-
-	return gauge
-}
-
-func (c Consumer) AddCounter(counterName string, counterValue int64) Counter {
-	counter := Counter{
-		Name:  counterName,
-		Value: counterValue,
-	}
-
-	c.store.AddCounter(counter)
-
-	log.Debug("counter added",
-		log.StringAttr("name", counter.Name),
-		log.Int64Attr("counter", counter.Value))
-
-	return counter
-}
-
-func (c Consumer) GetGauge(gaugeName string) (Gauge, error) {
-	gauge, err := c.store.GetGauge(gaugeName)
-	if err != nil {
-		return Gauge{}, ErrGaugeNotFound
-	}
-
-	log.Debug("gauge returned",
-		log.StringAttr("name", gauge.Name),
-		log.Float64Attr("gauge", gauge.Value))
+		log.StringAttr("name", gauge.ID),
+		log.Float64Attr("gauge", *gauge.Value))
 
 	return gauge, nil
 }
 
-func (c Consumer) GetAllGauges() []Gauge {
-	gauges := c.store.GetAllGauges()
-
-	log.Debug("all gauges returned",
-		log.StringAttr("gauges", fmt.Sprintf("%v", gauges)))
-
-	return gauges
-}
-
-func (c Consumer) GetCounter(counterName string) (Counter, error) {
-	counter, err := c.store.GetCounter(counterName)
-	if err != nil {
-		return Counter{}, ErrCounterNotFound
+func (c Consumer) AddCounter(counterName string, counterValue int64) (Metric, error) {
+	counter := Metric{
+		ID:         counterName,
+		MetricType: MetricCounter,
+		Value:      nil,
+		Delta:      &counterValue,
 	}
 
-	log.Debug("counter returned",
-		log.StringAttr("name", counter.Name),
-		log.Int64Attr("counter", counter.Value))
+	if err := c.store.AddCounter(counter, true); err != nil {
+		return Metric{}, fmt.Errorf("failed to add gauge %s: %w", counterName, err)
+	}
+
+	log.Debug("counter added",
+		log.StringAttr("name", counter.ID),
+		log.Int64Attr("counter", *counter.Delta))
 
 	return counter, nil
 }
 
-func (c Consumer) GetAllCounters() []Counter {
-	counters := c.store.GetAllCounters()
+func (c Consumer) GetMetric(id string) (Metric, error) {
+	metric, err := c.store.GetMetric(id)
+	if err != nil {
+		return Metric{}, ErrMetricNotFound
+	}
 
-	log.Debug("all counters returned",
-		log.StringAttr("counters", fmt.Sprintf("%v", counters)))
+	switch metric.MetricType {
+	case MetricGauge:
+		log.Debug("gauge returned",
+			log.StringAttr("name", metric.ID),
+			log.Float64Attr("gauge", *metric.Value))
+	case MetricCounter:
+		log.Debug("counter returned",
+			log.StringAttr("name", metric.ID),
+			log.Int64Attr("counter", *metric.Delta))
+	default:
+		return Metric{}, ErrUnknownMetricType
+	}
 
-	return counters
+	return metric, nil
+}
+
+func (c Consumer) GetAllMetrics() []Metric {
+	metrics := c.store.GetAllMetrics()
+
+	log.Debug("all metrics returned",
+		log.StringAttr("metrics", fmt.Sprintf("%v", metrics)))
+
+	return metrics
 }

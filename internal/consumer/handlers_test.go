@@ -49,7 +49,7 @@ func TestPostAddMetric(t *testing.T) {
 		},
 		{
 			name:      "Add not valid kind metric",
-			pathValue: map[string]string{"kind": "test", "name": "Test", "value": "0"},
+			pathValue: map[string]string{"type": "test", "id": "Test", "value": "0"},
 			want: want{
 				code:        400,
 				response:    "Bad Request\n",
@@ -58,7 +58,7 @@ func TestPostAddMetric(t *testing.T) {
 		},
 		{
 			name:      "Add not valid value metric",
-			pathValue: map[string]string{"kind": "gauge", "name": "Test", "value": "wrong"},
+			pathValue: map[string]string{"type": "gauge", "id": "Test", "value": "wrong"},
 			want: want{
 				code:        400,
 				response:    "Bad Request\n",
@@ -67,7 +67,7 @@ func TestPostAddMetric(t *testing.T) {
 		},
 		{
 			name:      "Add not full metric",
-			pathValue: map[string]string{"kind": "gauge"},
+			pathValue: map[string]string{"type": "gauge"},
 			want: want{
 				code:        404,
 				response:    "Not Found\n",
@@ -76,7 +76,7 @@ func TestPostAddMetric(t *testing.T) {
 		},
 		{
 			name:      "Add not full metric 2",
-			pathValue: map[string]string{"kind": "gauge", "name": "Test"},
+			pathValue: map[string]string{"type": "gauge", "id": "Test"},
 			want: want{
 				code:        404,
 				response:    "Not Found\n",
@@ -85,7 +85,7 @@ func TestPostAddMetric(t *testing.T) {
 		},
 		{
 			name:      "Add valid metric",
-			pathValue: map[string]string{"kind": "gauge", "name": "Test", "value": "0"},
+			pathValue: map[string]string{"type": "gauge", "id": "Test", "value": "0"},
 			want: want{
 				code:        200,
 				response:    "",

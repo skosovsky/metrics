@@ -8,24 +8,20 @@ func NewDummyStore() *DummyStore {
 	return &DummyStore{}
 }
 
-func (m *DummyStore) AddGauge(_ service.Gauge) {
+func (*DummyStore) AddGauge(_ service.Metric) error {
+	return nil
 }
 
-func (m *DummyStore) AddCounter(_ service.Counter) {
+func (*DummyStore) AddCounter(_ service.Metric, _ bool) error {
+	return nil
 }
 
-func (m *DummyStore) GetGauge(_ string) (service.Gauge, error) {
-	return service.Gauge{}, nil //nolint:exhaustruct // empty
+func (*DummyStore) GetMetric(_ string) (service.Metric, error) {
+	return service.Metric{}, nil //nolint:exhaustruct // empty
 }
 
-func (m *DummyStore) GetAllGauges() []service.Gauge {
-	return []service.Gauge{}
+func (*DummyStore) GetAllMetrics() []service.Metric {
+	return []service.Metric{}
 }
 
-func (m *DummyStore) GetCounter(_ string) (service.Counter, error) {
-	return service.Counter{}, nil //nolint:exhaustruct // empty
-}
-
-func (m *DummyStore) GetAllCounters() []service.Counter {
-	return []service.Counter{}
-}
+func (*DummyStore) Close() {}

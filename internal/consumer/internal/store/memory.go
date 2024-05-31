@@ -1,113 +1,131 @@
 package store
 
 import (
-	"errors"
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"os"
 	"sync"
 
+	"metrics/config"
 	"metrics/internal/consumer/internal/service"
-)
-
-var (
-	ErrGaugeNotFound   = errors.New("gauge not found")
-	ErrCounterNotFound = errors.New("counter not found")
+	"metrics/internal/log"
 )
 
 type (
-	gaugeStore struct {
-		memory map[string]service.Gauge
-		mu     sync.Mutex
-	}
-
-	counterStore struct {
-		memory map[string]service.Counter
-		mu     sync.Mutex
-	}
-
 	MemoryStore struct {
-		gauge   gaugeStore
-		counter counterStore
+		memory map[string]service.Metric
+		mu     sync.Mutex
 	}
 )
 
-func NewMemoryStore() *MemoryStore {
-	return &MemoryStore{
-		gauge: gaugeStore{
-			memory: map[string]service.Gauge{},
-			mu:     sync.Mutex{},
-		},
-		counter: counterStore{
-			memory: map[string]service.Counter{},
-			mu:     sync.Mutex{},
-		},
+func NewMemoryStore(cfg config.Store) (*MemoryStore, error) {
+	file, err := os.OpenFile(cfg.FileStoragePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		return nil, fmt.Errorf("open File %s error: %w", cfg.FileStoragePath, err)
 	}
+
+	defer func(file *os.File) {
+		err = file.Close()
+		if err != nil {
+			log.Error("close file error", cfg.FileStoragePath,
+				log.ErrAttr(err))
+		}
+	}(file)
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("get File %s stat error: %w", cfg.FileStoragePath, err)
+	}
+
+	memoryStore := MemoryStore{
+		memory: map[string]service.Metric{},
+		mu:     sync.Mutex{},
+	}
+
+	if !cfg.ShouldRestore {
+		if err = ClearFile(file); err != nil {
+			return nil, fmt.Errorf("clear File %s error: %w", cfg.FileStoragePath, err)
+		}
+	}
+
+	if fileInfo.Size() != 0 {
+		scanner := bufio.NewScanner(file)
+
+		for scanner.Scan() {
+			data := scanner.Bytes()
+
+			var metric service.Metric
+			if err = json.Unmarshal(data, &metric); err != nil {
+				return nil, fmt.Errorf("unmarshal json error: %w", err)
+			}
+
+			switch metric.MetricType {
+			case service.MetricGauge:
+				_ = memoryStore.AddGauge(metric) // err nil
+			case service.MetricCounter:
+				_ = memoryStore.AddCounter(metric, false) // err nil
+			default:
+				return nil, fmt.Errorf("metric type: %s, %w", metric.MetricType, service.ErrUnknownMetricType)
+			}
+		}
+
+		if err = scanner.Err(); err != nil {
+			return nil, fmt.Errorf("scanner error: %w", err)
+		}
+	}
+
+	return &memoryStore, nil
 }
 
-func (m *MemoryStore) AddGauge(gauge service.Gauge) {
-	m.gauge.mu.Lock()
-	m.gauge.memory[gauge.Name] = gauge
-	m.gauge.mu.Unlock()
+func (m *MemoryStore) AddGauge(gauge service.Metric) error {
+	m.mu.Lock()
+	m.memory[gauge.ID] = gauge
+	m.mu.Unlock()
+
+	return nil
 }
 
-func (m *MemoryStore) AddCounter(counter service.Counter) {
-	m.counter.mu.Lock()
-	current := m.counter.memory[counter.Name]
-	m.counter.mu.Unlock()
+func (m *MemoryStore) AddCounter(counter service.Metric, increment bool) error {
+	m.mu.Lock()
+	current := m.memory[counter.ID]
+	m.mu.Unlock()
 
-	counter.Value += current.Value
+	if current.Delta != nil && increment {
+		*counter.Delta += *current.Delta
+	}
 
-	m.counter.mu.Lock()
-	m.counter.memory[counter.Name] = counter
-	m.counter.mu.Unlock()
+	m.mu.Lock()
+	m.memory[counter.ID] = counter
+	m.mu.Unlock()
+
+	return nil
 }
 
-func (m *MemoryStore) GetGauge(name string) (service.Gauge, error) {
-	m.gauge.mu.Lock()
-	gauge, ok := m.gauge.memory[name]
-	m.gauge.mu.Unlock()
+func (m *MemoryStore) GetMetric(id string) (service.Metric, error) {
+	m.mu.Lock()
+	metric, ok := m.memory[id]
+	m.mu.Unlock()
 
 	if !ok {
-		return service.Gauge{}, ErrGaugeNotFound
+		return service.Metric{}, service.ErrMetricNotFound
 	}
 
-	return gauge, nil
+	return metric, nil
 }
 
-func (m *MemoryStore) GetAllGauges() []service.Gauge {
-	gauges := make([]service.Gauge, 0, len(m.gauge.memory))
+func (m *MemoryStore) GetAllMetrics() []service.Metric {
+	metrics := make([]service.Metric, 0, len(m.memory))
 
-	m.gauge.mu.Lock()
+	m.mu.Lock()
 
-	for _, gauge := range m.gauge.memory {
-		gauges = append(gauges, gauge)
+	for _, metric := range m.memory {
+		metrics = append(metrics, metric)
 	}
 
-	m.gauge.mu.Unlock()
+	m.mu.Unlock()
 
-	return gauges
+	return metrics
 }
 
-func (m *MemoryStore) GetCounter(name string) (service.Counter, error) {
-	m.counter.mu.Lock()
-	counters, ok := m.counter.memory[name]
-	m.counter.mu.Unlock()
-
-	if !ok {
-		return service.Counter{}, ErrCounterNotFound
-	}
-
-	return counters, nil
-}
-
-func (m *MemoryStore) GetAllCounters() []service.Counter {
-	counters := make([]service.Counter, 0, len(m.counter.memory))
-
-	m.counter.mu.Lock()
-
-	for _, counter := range m.counter.memory {
-		counters = append(counters, counter)
-	}
-
-	m.counter.mu.Unlock()
-
-	return counters
-}
+func (*MemoryStore) Close() {}

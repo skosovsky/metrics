@@ -16,18 +16,6 @@ import (
 	"metrics/internal/log"
 )
 
-const (
-	metricCounter = "counter"
-	metricGauge   = "gauge"
-)
-
-type Metric struct {
-	ID    string   `json:"id"              validate:"required"`
-	MType string   `json:"type"            validate:"required,oneof=gauge counter"`
-	Delta *int64   `json:"delta,omitempty"`
-	Value *float64 `json:"value,omitempty"`
-}
-
 type Handler struct {
 	service service.Consumer
 }
@@ -44,9 +32,9 @@ func (h Handler) InitRoutes() http.Handler {
 
 	router.Post("/", h.BadRequest)
 	router.Post("/update/{$}", h.AddMetricJSON)
-	router.Post("/update/{kind}/{name}/{value}", h.AddMetric)
+	router.Post("/update/{type}/{id}/{value}", h.AddMetric)
 	router.Post("/value/{$}", h.GetMetricJSON)
-	router.Get("/value/{kind}/{name}", h.GetMetric)
+	router.Get("/value/{type}/{id}", h.GetMetric)
 	router.Get("/", h.GetAllMetrics)
 
 	return router
@@ -57,7 +45,7 @@ func (h Handler) BadRequest(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (h Handler) AddMetricJSON(w http.ResponseWriter, r *http.Request) {
-	var metric Metric
+	var metric service.Metric
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -87,11 +75,21 @@ func (h Handler) AddMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	switch metric.MType {
-	case metricCounter:
-		_ = h.service.AddCounter(metric.ID, *metric.Delta)
-	case metricGauge:
-		_ = h.service.AddGauge(metric.ID, *metric.Value)
+	switch metric.MetricType {
+	case service.MetricCounter:
+		_, err = h.service.AddCounter(metric.ID, *metric.Delta)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
+			return
+		}
+	case service.MetricGauge:
+		_, err = h.service.AddGauge(metric.ID, *metric.Value)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
+			return
+		}
 	default:
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 
@@ -114,10 +112,10 @@ func (h Handler) AddMetricJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) AddMetric(w http.ResponseWriter, r *http.Request) {
-	kind := r.PathValue("kind")
+	metricType := r.PathValue("type")
 
-	name := r.PathValue("name")
-	if name == "" {
+	id := r.PathValue("id")
+	if id == "" {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 
 		return
@@ -130,8 +128,8 @@ func (h Handler) AddMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	switch kind {
-	case metricCounter:
+	switch metricType {
+	case service.MetricCounter:
 		value, err := strconv.ParseInt(valueString, 10, 64)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
@@ -139,9 +137,13 @@ func (h Handler) AddMetric(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		_ = h.service.AddCounter(name, value)
+		_, err = h.service.AddCounter(id, value)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 
-	case metricGauge:
+			return
+		}
+	case service.MetricGauge:
 		value, err := strconv.ParseFloat(valueString, 64)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
@@ -149,8 +151,12 @@ func (h Handler) AddMetric(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		_ = h.service.AddGauge(name, value)
+		_, err = h.service.AddGauge(id, value)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 
+			return
+		}
 	default:
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 
@@ -162,18 +168,18 @@ func (h Handler) AddMetric(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
-	kind := r.PathValue("kind")
+	metricType := r.PathValue("type")
 
-	name := r.PathValue("name")
-	if name == "" {
+	id := r.PathValue("id")
+	if id == "" {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 
 		return
 	}
 
-	switch kind {
-	case metricCounter:
-		counter, err := h.service.GetCounter(name)
+	switch metricType {
+	case service.MetricCounter:
+		counter, err := h.service.GetMetric(id)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 
@@ -183,7 +189,7 @@ func (h Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 
-		_, err = io.WriteString(w, strconv.FormatInt(counter.Value, 10))
+		_, err = io.WriteString(w, strconv.FormatInt(*counter.Delta, 10))
 		if err != nil {
 			log.Error("Error writing response", //nolint:contextcheck // no ctx
 				log.ErrAttr(err))
@@ -192,16 +198,15 @@ func (h Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 
 			return
 		}
-
-	case metricGauge:
-		gauge, err := h.service.GetGauge(name)
+	case service.MetricGauge:
+		gauge, err := h.service.GetMetric(id)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 
 			return
 		}
 
-		gaugeValue := strconv.FormatFloat(gauge.Value, 'f', -1, 64)
+		gaugeValue := strconv.FormatFloat(*gauge.Value, 'f', -1, 64)
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
@@ -222,7 +227,7 @@ func (h Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) { //nolint:funlen // agree
-	var metric Metric
+	var metric service.Metric
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -269,17 +274,17 @@ func (h Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) { //nolin
 		return
 	}
 
-	switch metric.MType {
-	case metricCounter:
-		var counter service.Counter
-		counter, err = h.service.GetCounter(metric.ID)
+	switch metric.MetricType {
+	case service.MetricCounter:
+		var counter service.Metric
+		counter, err = h.service.GetMetric(metric.ID)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 
 			return
 		}
 
-		metric.Delta = &counter.Value
+		metric.Delta = counter.Delta
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Content-Encoding", "gzip") //TODO: костыль
@@ -294,16 +299,16 @@ func (h Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) { //nolin
 
 			return
 		}
-	case metricGauge:
-		var gauge service.Gauge
-		gauge, err = h.service.GetGauge(metric.ID)
+	case service.MetricGauge:
+		var gauge service.Metric
+		gauge, err = h.service.GetMetric(metric.ID)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 
 			return
 		}
 
-		metric.Value = &gauge.Value
+		metric.Value = gauge.Value
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Content-Encoding", "gzip") //TODO: костыль
@@ -326,25 +331,22 @@ func (h Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) { //nolin
 }
 
 func (h Handler) GetAllMetrics(w http.ResponseWriter, _ *http.Request) {
-	var answer string
-
-	counters := h.service.GetAllCounters()
-	if len(counters) == 0 {
+	metrics := h.service.GetAllMetrics()
+	if len(metrics) == 0 {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 
 		return
 	}
 
-	answer = h.prepareAllCounters(counters)
+	answer, err := h.prepareAllMetrics(metrics)
+	if err != nil {
+		log.Error("error prepare all metrics", //nolint:contextcheck // false positive
+			log.ErrAttr(err))
 
-	gauges := h.service.GetAllGauges()
-	if len(gauges) == 0 {
-		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 		return
 	}
-
-	answer += h.prepareAllGauges(gauges)
 
 	const templateHTML = `
 		<!DOCTYPE html>
@@ -380,33 +382,29 @@ func (h Handler) GetAllMetrics(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-func (Handler) prepareAllCounters(counters []service.Counter) string {
+func (Handler) prepareAllMetrics(metrics []service.Metric) (string, error) {
 	var answer strings.Builder
 
-	for _, counter := range counters {
-		_, _ = answer.WriteString(counter.Name)                         // always returns nil error
-		_, _ = answer.WriteString(" ")                                  // always returns nil error
-		_, _ = answer.WriteString(strconv.FormatInt(counter.Value, 10)) // always returns nil error
-		_, _ = answer.WriteString("\n")                                 // always returns nil error
+	for _, metric := range metrics {
+		_, _ = answer.WriteString(metric.ID) // always returns nil error
+		_, _ = answer.WriteString(" ")       // always returns nil error
+
+		switch metric.MetricType {
+		case service.MetricCounter:
+			_, _ = answer.WriteString(strconv.FormatInt(*metric.Delta, 10)) // always returns nil error
+		case service.MetricGauge:
+			_, _ = answer.WriteString(strconv.FormatFloat(*metric.Value, 'f', -1, 64)) // always returns nil error
+		default:
+			return "", service.ErrUnknownMetricType
+		}
+
+		_, _ = answer.WriteString("\n") // always returns nil error
 	}
 
-	return answer.String()
+	return answer.String(), nil
 }
 
-func (Handler) prepareAllGauges(gauges []service.Gauge) string {
-	var answer strings.Builder
-
-	for _, gauge := range gauges {
-		_, _ = answer.WriteString(gauge.Name)                                    // always returns nil error
-		_, _ = answer.WriteString(" ")                                           // always returns nil error
-		_, _ = answer.WriteString(strconv.FormatFloat(gauge.Value, 'f', -1, 64)) // always returns nil error
-		_, _ = answer.WriteString("\n")                                          // always returns nil error
-	}
-
-	return answer.String()
-}
-
-func (Handler) IsValidRequest(metric Metric) bool {
+func (Handler) IsValidRequest(metric service.Metric) bool {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	err := validate.Struct(metric)

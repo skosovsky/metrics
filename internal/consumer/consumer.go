@@ -17,8 +17,8 @@ const (
 	IdleTimeout  = 60 * time.Second
 )
 
-func RunServer(_ context.Context, handler Handler, cfg config.ConsumerConfig) error {
-	server := http.Server{
+func RunServer(ctx context.Context, handler Handler, cfg config.ConsumerConfig) error {
+	server := &http.Server{
 		Addr:                         string(cfg.Consumer.Address),
 		Handler:                      handler.InitRoutes(),
 		DisableGeneralOptionsHandler: false,
@@ -34,6 +34,15 @@ func RunServer(_ context.Context, handler Handler, cfg config.ConsumerConfig) er
 		BaseContext:                  nil,
 		ConnContext:                  nil,
 	}
+
+	go func() {
+		if <-ctx.Done(); true {
+			if err := server.Shutdown(ctx); err != nil {
+				log.Error("error shutting down server gracefully", //nolint:contextcheck // no ctx
+					log.ErrAttr(err))
+			}
+		}
+	}()
 
 	log.Info("server starting", //nolint:contextcheck // no ctx
 		log.StringAttr("host:port", string(cfg.Consumer.Address)))
