@@ -57,6 +57,10 @@ var (
 	Group       = slog.Group       //nolint:gochecknoglobals // alias
 )
 
+func JSONAttr(key string, val []byte) Attr {
+	return slog.String(key, string(val))
+}
+
 func Float32Attr(key string, val float32) Attr {
 	return slog.Float64(key, float64(val))
 }

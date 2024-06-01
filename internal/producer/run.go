@@ -21,7 +21,7 @@ func Run(cfg config.ProducerConfig) {
 		case <-tickPool.C:
 			stats.Update()
 			log.Debug("Updated metrics",
-				log.AnyAttr("PollCount", stats.PollCount.Value))
+				log.AnyAttr("PollCount", *stats.memory["PollCount"].Delta))
 		case <-tickReport.C:
 			err := stats.Report(cfg.Producer)
 			if err != nil {
