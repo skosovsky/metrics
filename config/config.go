@@ -61,7 +61,7 @@ func NewConsumerConfig() (ConsumerConfig, error) {
 
 	flag.Var(&config.Consumer.Address, "a", "server address host:port")
 	flag.Uint64Var(&config.Store.StoreInterval, "i", 300, "store interval in seconds")
-	flag.StringVar(&config.Store.FileStoragePath, "f", "/tmp/short-url-db.json", "file storage path")
+	flag.StringVar(&config.Store.FileStoragePath, "f", "/tmp/metrics-db.json", "file storage path")
 	flag.BoolVar(&config.Store.ShouldRestore, "r", true, "restore storage or not")
 	flag.Parse()
 

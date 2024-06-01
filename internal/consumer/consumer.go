@@ -36,11 +36,11 @@ func RunServer(ctx context.Context, handler Handler, cfg config.ConsumerConfig) 
 	}
 
 	go func() {
-		if <-ctx.Done(); true {
-			if err := server.Shutdown(ctx); err != nil {
-				log.Error("error shutting down server gracefully", //nolint:contextcheck // no ctx
-					log.ErrAttr(err))
-			}
+		<-ctx.Done()
+
+		if err := server.Shutdown(ctx); err != nil {
+			log.Error("error shutting down server gracefully", //nolint:contextcheck // no ctx
+				log.ErrAttr(err))
 		}
 	}()
 

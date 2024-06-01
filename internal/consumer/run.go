@@ -48,8 +48,6 @@ func Run(cfg config.ConsumerConfig) error {
 		return fmt.Errorf("run server: %w", err)
 	}
 
-	cancel()
-
 	return nil
 }
 
@@ -58,9 +56,9 @@ func autosave(ctx context.Context, cfg config.Store, db service.Store) {
 	defer tickSave.Stop()
 
 	go func(ctx context.Context) {
-		if <-ctx.Done(); true {
-			tickSave.Stop()
-		}
+		<-ctx.Done()
+
+		tickSave.Stop()
 	}(ctx)
 
 	for range tickSave.C {
@@ -73,27 +71,12 @@ func autosave(ctx context.Context, cfg config.Store, db service.Store) {
 }
 
 func saveAll(cfg config.Store, db service.Store) error {
-	var fileStore *store.FileStore
-	var err error
-
-	switch currentStore := db.(type) {
-	case *store.FileStore:
-		fileStore = currentStore
-
-		err = store.ClearFile(fileStore.File)
-		if err != nil {
-			return fmt.Errorf("clear file store: %w", err)
-		}
-	case *store.MemoryStore:
-		fileStore, err = store.NewFileStore(cfg)
-		if err != nil {
-			return fmt.Errorf("create file store: %w", err)
-		}
-
-		defer fileStore.Close()
-	default:
-		return fmt.Errorf("unknown database type: %T, %w", currentStore, service.ErrUnknownDBType)
+	fileStore, err := store.NewFileStore(cfg)
+	if err != nil {
+		return fmt.Errorf("create file store: %w", err)
 	}
+
+	defer fileStore.Close()
 
 	metrics := db.GetAllMetrics()
 
@@ -136,12 +119,13 @@ func gracefulShutdown(ctx context.Context, cancel context.CancelFunc, cfg config
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if <-ctx.Done(); true {
-			err := saveAll(cfg, db) //nolint:contextcheck // no ctx
-			if err != nil {
-				log.Error("error saving data", //nolint:contextcheck // no ctx
-					log.ErrAttr(err))
-			}
+
+		<-ctx.Done()
+
+		err := saveAll(cfg, db) //nolint:contextcheck // no ctx
+		if err != nil {
+			log.Error("error saving data", //nolint:contextcheck // no ctx
+				log.ErrAttr(err))
 		}
 	}()
 
