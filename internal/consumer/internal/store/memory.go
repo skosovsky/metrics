@@ -115,9 +115,8 @@ func (m *MemoryStore) GetMetric(id string) (service.Metric, error) {
 }
 
 func (m *MemoryStore) GetAllMetrics() []service.Metric {
-	metrics := make([]service.Metric, 0, len(m.memory))
-
 	m.mu.Lock()
+	metrics := make([]service.Metric, 0, len(m.memory))
 
 	for _, metric := range m.memory {
 		metrics = append(metrics, metric)
