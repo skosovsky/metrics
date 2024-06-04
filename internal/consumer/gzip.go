@@ -17,10 +17,6 @@ type gzipResponseWriter struct {
 }
 
 func (g *gzipResponseWriter) Write(data []byte) (int, error) {
-	if g.statusCode == 0 {
-		g.WriteHeader(http.StatusOK)
-	}
-
 	g.body = append(g.body, data...)
 	g.bodySize += len(data)
 
@@ -28,10 +24,8 @@ func (g *gzipResponseWriter) Write(data []byte) (int, error) {
 }
 
 func (g *gzipResponseWriter) WriteHeader(statusCode int) {
-	if g.statusCode == 0 {
-		g.statusCode = statusCode
-		g.ResponseWriter.WriteHeader(statusCode)
-	}
+	g.statusCode = statusCode
+	g.ResponseWriter.WriteHeader(statusCode)
 }
 
 func (g *gzipResponseWriter) Header() http.Header {

@@ -13,7 +13,7 @@ import (
 )
 
 type FileStore struct {
-	File    *os.File
+	file    *os.File
 	encoder *json.Encoder
 	*MemoryStore
 }
@@ -34,8 +34,14 @@ func NewFileStore(cfg config.Store) (*FileStore, error) {
 		return nil, fmt.Errorf("create memory store error: %w", err)
 	}
 
+	fileStore := &FileStore{
+		file:        file,
+		encoder:     json.NewEncoder(file),
+		MemoryStore: memoryStore,
+	}
+
 	if !cfg.ShouldRestore {
-		if err = ClearFile(file); err != nil {
+		if err = fileStore.Clear(); err != nil {
 			return nil, fmt.Errorf("clear File %s error: %w", cfg.FileStoragePath, err)
 		}
 	}
@@ -53,9 +59,9 @@ func NewFileStore(cfg config.Store) (*FileStore, error) {
 
 			switch metric.MetricType {
 			case service.MetricGauge:
-				_ = memoryStore.AddGauge(metric) // err nil
+				_ = fileStore.MemoryStore.AddGauge(metric) // err nil
 			case service.MetricCounter:
-				_ = memoryStore.AddCounter(metric, false) // err nil
+				_ = fileStore.MemoryStore.AddCounter(metric, false) // err nil
 			default:
 				return nil, fmt.Errorf("metric type: %s, %w", metric.MetricType, service.ErrUnknownMetricType)
 			}
@@ -66,24 +72,14 @@ func NewFileStore(cfg config.Store) (*FileStore, error) {
 		}
 	}
 
-	return &FileStore{
-		File:        file,
-		encoder:     json.NewEncoder(file),
-		MemoryStore: memoryStore,
-	}, nil
+	return fileStore, nil
 }
 
 func (f *FileStore) AddGauge(gauge service.Metric) error {
 	_ = f.MemoryStore.AddGauge(gauge) // err nil
 
-	err := f.deleteMetric(gauge.ID)
-	if err != nil {
-		return fmt.Errorf("add gauge: %w", err)
-	}
-
-	err = f.encoder.Encode(gauge)
-	if err != nil {
-		return fmt.Errorf("encode File %s error: %w", f.File.Name(), err)
+	if err := f.saveAllMetrics(); err != nil {
+		return fmt.Errorf("save all metrics error: %w", err)
 	}
 
 	return nil
@@ -92,94 +88,48 @@ func (f *FileStore) AddGauge(gauge service.Metric) error {
 func (f *FileStore) AddCounter(counter service.Metric, increment bool) error {
 	_ = f.MemoryStore.AddCounter(counter, increment) // err nil
 
-	err := f.deleteMetric(counter.ID)
-	if err != nil {
-		return fmt.Errorf("add counter: %w", err)
-	}
-
-	err = f.encoder.Encode(counter)
-	if err != nil {
-		return fmt.Errorf("encode File %s error: %w", f.File.Name(), err)
+	if err := f.saveAllMetrics(); err != nil {
+		return fmt.Errorf("save all metrics error: %w", err)
 	}
 
 	return nil
 }
 
-func (f *FileStore) deleteMetric(id string) error {
-	var err error
-
-	_, err = f.File.Seek(0, io.SeekStart)
-	if err != nil {
-		return fmt.Errorf("seek File %s error: %w", f.File.Name(), err)
-	}
-
-	var lines [][]byte
-	var found bool
-	scanner := bufio.NewScanner(f.File)
-
-	for scanner.Scan() {
-		data := scanner.Bytes()
-
-		var metric service.Metric
-		if err = json.Unmarshal(data, &metric); err != nil {
-			return fmt.Errorf("unmarshal json error: %w", err)
-		}
-
-		if metric.ID == id {
-			found = true
+func (f *FileStore) saveAllMetrics() error {
+	for _, metric := range f.memory {
+		if metric.MetricType != service.MetricCounter && metric.MetricType != service.MetricGauge {
+			log.Error("unknown metric type",
+				log.ErrAttr(service.ErrUnknownMetricType))
 
 			continue
 		}
 
-		lines = append(lines, data, []byte("\n"))
-	}
-
-	if err = scanner.Err(); err != nil {
-		return fmt.Errorf("scanner error: %w", err)
-	}
-
-	if !found {
-		return nil
-	}
-
-	if err = ClearFile(f.File); err != nil {
-		return fmt.Errorf("clear File error: %w", err)
-	}
-
-	writer := bufio.NewWriter(f.File)
-
-	for _, line := range lines {
-		_, err = writer.Write(line)
+		err := f.encoder.Encode(metric)
 		if err != nil {
-			return fmt.Errorf("write File %s error: %w", f.File.Name(), err)
+			return fmt.Errorf("encode File %s error: %w", f.file.Name(), err)
 		}
-	}
-
-	err = writer.Flush()
-	if err != nil {
-		return fmt.Errorf("flush File %s error: %w", f.File.Name(), err)
 	}
 
 	return nil
 }
 
 func (f *FileStore) Close() {
-	err := f.File.Close()
+	err := f.file.Close()
 	if err != nil {
-		log.Error("close File %s error", f.File.Name(),
+		log.Error("close File %s error", f.file.Name(),
 			log.ErrAttr(err))
 	}
 }
 
-func ClearFile(file *os.File) error {
-	err := file.Truncate(0)
+func (f *FileStore) Clear() error {
+	err := f.file.Truncate(0)
 	if err != nil {
-		return fmt.Errorf("truncate File %s error: %w", file.Name(), err)
+		return fmt.Errorf("truncate File %s error: %w", f.file.Name(), err)
 	}
 
-	_, err = file.Seek(0, io.SeekStart)
+	_, err = f.file.Seek(0, io.SeekStart)
 	if err != nil {
-		return fmt.Errorf("seek File %s error: %w", file.Name(), err)
+		return fmt.Errorf("seek File %s error: %w", f.file.Name(), err)
 	}
 
 	return nil

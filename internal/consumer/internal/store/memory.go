@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"sync"
 
@@ -44,7 +45,7 @@ func NewMemoryStore(cfg config.Store) (*MemoryStore, error) {
 	}
 
 	if !cfg.ShouldRestore {
-		if err = ClearFile(file); err != nil {
+		if err = clearFile(file); err != nil {
 			return nil, fmt.Errorf("clear File %s error: %w", cfg.FileStoragePath, err)
 		}
 	}
@@ -80,7 +81,9 @@ func NewMemoryStore(cfg config.Store) (*MemoryStore, error) {
 
 func (m *MemoryStore) AddGauge(gauge service.Metric) error {
 	m.mu.Lock()
+
 	m.memory[gauge.ID] = gauge
+
 	m.mu.Unlock()
 
 	return nil
@@ -88,15 +91,15 @@ func (m *MemoryStore) AddGauge(gauge service.Metric) error {
 
 func (m *MemoryStore) AddCounter(counter service.Metric, increment bool) error {
 	m.mu.Lock()
+
 	current := m.memory[counter.ID]
-	m.mu.Unlock()
 
 	if current.Delta != nil && increment {
 		*counter.Delta += *current.Delta
 	}
 
-	m.mu.Lock()
 	m.memory[counter.ID] = counter
+
 	m.mu.Unlock()
 
 	return nil
@@ -104,7 +107,9 @@ func (m *MemoryStore) AddCounter(counter service.Metric, increment bool) error {
 
 func (m *MemoryStore) GetMetric(id string) (service.Metric, error) {
 	m.mu.Lock()
+
 	metric, ok := m.memory[id]
+
 	m.mu.Unlock()
 
 	if !ok {
@@ -116,6 +121,7 @@ func (m *MemoryStore) GetMetric(id string) (service.Metric, error) {
 
 func (m *MemoryStore) GetAllMetrics() []service.Metric {
 	m.mu.Lock()
+
 	metrics := make([]service.Metric, 0, len(m.memory))
 
 	for _, metric := range m.memory {
@@ -128,3 +134,17 @@ func (m *MemoryStore) GetAllMetrics() []service.Metric {
 }
 
 func (*MemoryStore) Close() {}
+
+func clearFile(file *os.File) error {
+	err := file.Truncate(0)
+	if err != nil {
+		return fmt.Errorf("truncate File %s error: %w", file.Name(), err)
+	}
+
+	_, err = file.Seek(0, io.SeekStart)
+	if err != nil {
+		return fmt.Errorf("seek File %s error: %w", file.Name(), err)
+	}
+
+	return nil
+}

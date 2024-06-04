@@ -32,8 +32,6 @@ type (
 	}
 
 	Store struct {
-		DBDriver        string `env:"DB_DRIVER"         validate:"required,oneof=sqlite3 memory"`
-		DBAddress       string `env:"DB_ADDRESS"`
 		StoreInterval   uint64 `env:"STORE_INTERVAL"`
 		FileStoragePath string `env:"FILE_STORAGE_PATH"`
 		ShouldRestore   bool   `env:"RESTORE"`
