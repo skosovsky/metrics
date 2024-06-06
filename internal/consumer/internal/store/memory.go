@@ -21,6 +21,13 @@ type (
 )
 
 func NewMemoryStore(cfg config.Store) (*MemoryStore, error) {
+	if cfg.FileStoragePath == "" {
+		return &MemoryStore{
+			memory: map[string]service.Metric{},
+			mu:     sync.Mutex{},
+		}, nil
+	}
+
 	file, err := os.OpenFile(cfg.FileStoragePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		return nil, fmt.Errorf("open File %s error: %w", cfg.FileStoragePath, err)

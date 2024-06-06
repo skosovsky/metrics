@@ -30,18 +30,17 @@ func (h Handler) InitRoutes() http.Handler {
 	router.Use(WithLogging)
 	router.Use(WithGzipCompress)
 
-	router.Post("/", h.BadRequest)
 	router.Post("/update/{$}", h.AddMetricJSON)
 	router.Post("/update/{type}/{id}/{value}", h.AddMetric)
 	router.Post("/value/{$}", h.GetMetricJSON)
 	router.Get("/value/{type}/{id}", h.GetMetric)
 	router.Get("/", h.GetAllMetrics)
 
-	return router
-}
+	router.Post("/", func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+	})
 
-func (h Handler) BadRequest(w http.ResponseWriter, _ *http.Request) {
-	http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+	return router
 }
 
 func (h Handler) AddMetricJSON(w http.ResponseWriter, r *http.Request) {
