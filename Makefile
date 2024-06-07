@@ -21,7 +21,7 @@ test-static: ## Test static
 	@echo "Testing ${APP} - static..."
 	go vet -vettool=$(which ./tests/statictest-darwin-arm64) ./...
 
-.PHONY: test_all lint tests build-test test1 test2 test3 test4 test5 test6 test7 test8
+.PHONY: test_all lint tests build-test test1 test2 test3 test4 test5 test6 test7 test8 test9
 build-test: ## Build an application
 	@echo "Building ${APP} ..."
 	go mod tidy
@@ -69,7 +69,11 @@ test8: ## Test increment #8
 	@echo "Testing ${APP} - increment 8..."
 	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration8$$" -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=8008 -source-path=.
 
-test_all: lint tests build-test test1 test2 test3 test4 test5 test6 test7 test8
+test9: ## Test increment #9
+	@echo "Testing ${APP} - increment 9..."
+	tests/metricstest-darwin-arm64 -test.v -test.run="^TestIteration9$$" -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -file-storage-path=file.json -server-port=8009 -source-path=.
+
+test_all: lint tests build-test test1 test2 test3 test4 test5 test6 test7 test8 test9
 	@echo "All tests completed."
 
 run: ## Run an application

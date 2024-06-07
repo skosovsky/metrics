@@ -32,8 +32,9 @@ type (
 	}
 
 	Store struct {
-		DBDriver  string `env:"DB_DRIVER"  validate:"required,oneof=sqlite3 memory"`
-		DBAddress string `env:"DB_ADDRESS"`
+		StoreInterval   uint64 `env:"STORE_INTERVAL"`
+		FileStoragePath string `env:"FILE_STORAGE_PATH"`
+		ShouldRestore   bool   `env:"RESTORE"`
 	}
 
 	ConsumerConfig struct {
@@ -56,7 +57,10 @@ func NewConsumerConfig() (ConsumerConfig, error) {
 		return ConsumerConfig{}, fmt.Errorf("failed to set default value: %w", err)
 	}
 
-	flag.Var(&config.Consumer.Address, "a", "Server address host:port")
+	flag.Var(&config.Consumer.Address, "a", "server address host:port")
+	flag.Uint64Var(&config.Store.StoreInterval, "i", 300, "store interval in seconds")
+	flag.StringVar(&config.Store.FileStoragePath, "f", "/tmp/metrics-db.json", "file storage path")
+	flag.BoolVar(&config.Store.ShouldRestore, "r", true, "restore storage or not")
 	flag.Parse()
 
 	if err = env.Parse(&config); err != nil {

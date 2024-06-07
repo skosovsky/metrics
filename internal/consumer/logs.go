@@ -37,6 +37,12 @@ func (l *logResponseWriter) WriteHeader(statusCode int) {
 	l.responseData.statusCode = statusCode
 }
 
+func (l *logResponseWriter) Done() {
+	if l.responseData.statusCode == 0 {
+		l.responseData.statusCode = http.StatusOK
+	}
+}
+
 func WithLogging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -49,6 +55,8 @@ func WithLogging(next http.Handler) http.Handler {
 		}
 
 		next.ServeHTTP(&logWriter, r)
+
+		logWriter.Done()
 
 		duration := time.Since(start)
 

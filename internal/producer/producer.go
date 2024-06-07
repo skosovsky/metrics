@@ -24,68 +24,128 @@ const (
 	methodCompressGzip = "gzip"
 )
 
-type (
-	Counter struct {
-		Name  string
-		Value int64
-	}
+const (
+	MetricCounter = "counter"
+	MetricGauge   = "gauge"
+)
 
-	Gauge struct {
-		Name  string
-		Value float64
+var ErrUnknownMetricType = errors.New("unknown metric type")
+
+type (
+	Metric struct {
+		ID         string   `json:"id"              validate:"required"`
+		MetricType string   `json:"type"            validate:"required,oneof=gauge counter"`
+		Delta      *int64   `json:"delta,omitempty"`
+		Value      *float64 `json:"value,omitempty"`
 	}
 
 	MetricsStore struct {
-		Gauges    map[string]Gauge
-		PollCount Counter
+		memory map[string]Metric
 	}
 )
 
 func NewMetrics() *MetricsStore {
 	return &MetricsStore{
-		Gauges: map[string]Gauge{},
-		PollCount: Counter{
-			Name:  "",
-			Value: 0,
-		},
+		memory: map[string]Metric{},
 	}
 }
 
-func (m *MetricsStore) Update() {
+func (m *MetricsStore) Update() { //nolint:funlen // true
 	var memMetrics runtime.MemStats
 	runtime.ReadMemStats(&memMetrics)
 
-	m.PollCount.Name = "PollCount"
-	m.PollCount.Value++
+	currentDelta := m.memory["PollCount"].Delta
+	if currentDelta == nil {
+		currentDelta = new(int64)
+	}
 
-	m.Gauges["Alloc"] = Gauge{Name: "Alloc", Value: float64(memMetrics.Alloc)}
-	m.Gauges["BuckHashSys"] = Gauge{Name: "BuckHashSys", Value: float64(memMetrics.BuckHashSys)}
-	m.Gauges["Frees"] = Gauge{Name: "Frees", Value: float64(memMetrics.Frees)}
-	m.Gauges["GCCPUFraction"] = Gauge{Name: "GCCPUFraction", Value: memMetrics.GCCPUFraction}
-	m.Gauges["GCSys"] = Gauge{Name: "GCSys", Value: float64(memMetrics.GCSys)}
-	m.Gauges["HeapAlloc"] = Gauge{Name: "HeapAlloc", Value: float64(memMetrics.HeapAlloc)}
-	m.Gauges["HeapIdle"] = Gauge{Name: "HeapIdle", Value: float64(memMetrics.HeapIdle)}
-	m.Gauges["HeapInuse"] = Gauge{Name: "HeapInuse", Value: float64(memMetrics.HeapInuse)}
-	m.Gauges["HeapObjects"] = Gauge{Name: "HeapObjects", Value: float64(memMetrics.HeapObjects)}
-	m.Gauges["HeapReleased"] = Gauge{Name: "HeapReleased", Value: float64(memMetrics.HeapReleased)}
-	m.Gauges["HeapSys"] = Gauge{Name: "HeapSys", Value: float64(memMetrics.HeapSys)}
-	m.Gauges["LastGC"] = Gauge{Name: "LastGC", Value: float64(memMetrics.LastGC)}
-	m.Gauges["Lookups"] = Gauge{Name: "Lookups", Value: float64(memMetrics.Lookups)}
-	m.Gauges["MCacheInuse"] = Gauge{Name: "MCacheInuse", Value: float64(memMetrics.MCacheInuse)}
-	m.Gauges["MCacheSys"] = Gauge{Name: "MCacheSys", Value: float64(memMetrics.MCacheSys)}
-	m.Gauges["MSpanInuse"] = Gauge{Name: "MSpanInuse", Value: float64(memMetrics.MSpanInuse)}
-	m.Gauges["MSpanSys"] = Gauge{Name: "MSpanSys", Value: float64(memMetrics.MSpanSys)}
-	m.Gauges["Mallocs"] = Gauge{Name: "Mallocs", Value: float64(memMetrics.Mallocs)}
-	m.Gauges["NextGC"] = Gauge{Name: "NextGC", Value: float64(memMetrics.NextGC)}
-	m.Gauges["NumForcedGC"] = Gauge{Name: "NumForcedGC", Value: float64(memMetrics.NumForcedGC)}
-	m.Gauges["NumGC"] = Gauge{Name: "NumGC", Value: float64(memMetrics.NumGC)}
-	m.Gauges["OtherSys"] = Gauge{Name: "OtherSys", Value: float64(memMetrics.OtherSys)}
-	m.Gauges["PauseTotalNs"] = Gauge{Name: "PauseTotalNs", Value: float64(memMetrics.PauseTotalNs)}
-	m.Gauges["StackInuse"] = Gauge{Name: "StackInuse", Value: float64(memMetrics.StackInuse)}
-	m.Gauges["StackSys"] = Gauge{Name: "StackSys", Value: float64(memMetrics.StackSys)}
-	m.Gauges["Sys"] = Gauge{Name: "Sys", Value: float64(memMetrics.Sys)}
-	m.Gauges["TotalAlloc"] = Gauge{Name: "TotalAlloc", Value: float64(memMetrics.TotalAlloc)}
-	m.Gauges["RandomValue"] = Gauge{Name: "RandomValue", Value: float64(rand.Int())} //nolint:gosec // i know
+	*currentDelta++
+
+	m.memory["PollCount"] = Metric{ID: "PollCount", MetricType: MetricCounter, Value: nil, Delta: currentDelta}
+
+	memMetricsAlloc := float64(memMetrics.Alloc)
+	m.memory["Alloc"] = Metric{ID: "Alloc", MetricType: MetricGauge, Value: &memMetricsAlloc, Delta: nil}
+
+	memMetricsBuckHashSys := float64(memMetrics.BuckHashSys)
+	m.memory["BuckHashSys"] = Metric{ID: "BuckHashSys", MetricType: MetricGauge, Value: &memMetricsBuckHashSys, Delta: nil}
+
+	memMetricsFrees := float64(memMetrics.Frees)
+	m.memory["Frees"] = Metric{ID: "Frees", MetricType: MetricGauge, Value: &memMetricsFrees, Delta: nil}
+
+	memMetricsGCCPUFraction := memMetrics.GCCPUFraction
+	m.memory["GCCPUFraction"] = Metric{ID: "GCCPUFraction", MetricType: MetricGauge, Value: &memMetricsGCCPUFraction, Delta: nil}
+
+	memMetricsGCSys := float64(memMetrics.GCSys)
+	m.memory["GCSys"] = Metric{ID: "GCSys", MetricType: MetricGauge, Value: &memMetricsGCSys, Delta: nil}
+
+	memMetricsHeapAlloc := float64(memMetrics.HeapAlloc)
+	m.memory["HeapAlloc"] = Metric{ID: "HeapAlloc", MetricType: MetricGauge, Value: &memMetricsHeapAlloc, Delta: nil}
+
+	memMetricsHeapIdle := float64(memMetrics.HeapIdle)
+	m.memory["HeapIdle"] = Metric{ID: "HeapIdle", MetricType: MetricGauge, Value: &memMetricsHeapIdle, Delta: nil}
+
+	memMetricsHeapInuse := float64(memMetrics.HeapInuse)
+	m.memory["HeapInuse"] = Metric{ID: "HeapInuse", MetricType: MetricGauge, Value: &memMetricsHeapInuse, Delta: nil}
+
+	memMetricsHeapObjects := float64(memMetrics.HeapObjects)
+	m.memory["HeapObjects"] = Metric{ID: "HeapObjects", MetricType: MetricGauge, Value: &memMetricsHeapObjects, Delta: nil}
+
+	memMetricsHeapReleased := float64(memMetrics.HeapReleased)
+	m.memory["HeapReleased"] = Metric{ID: "HeapReleased", MetricType: MetricGauge, Value: &memMetricsHeapReleased, Delta: nil}
+
+	memMetricsHeapSys := float64(memMetrics.HeapSys)
+	m.memory["HeapSys"] = Metric{ID: "HeapSys", MetricType: MetricGauge, Value: &memMetricsHeapSys, Delta: nil}
+
+	memMetricsLastGC := float64(memMetrics.LastGC)
+	m.memory["LastGC"] = Metric{ID: "LastGC", MetricType: MetricGauge, Value: &memMetricsLastGC, Delta: nil}
+
+	memMetricsLookups := float64(memMetrics.Lookups)
+	m.memory["Lookups"] = Metric{ID: "Lookups", MetricType: MetricGauge, Value: &memMetricsLookups, Delta: nil}
+
+	memMetricsMCacheInuse := float64(memMetrics.MCacheInuse)
+	m.memory["MCacheInuse"] = Metric{ID: "MCacheInuse", MetricType: MetricGauge, Value: &memMetricsMCacheInuse, Delta: nil}
+
+	memMetricsMCacheSys := float64(memMetrics.MCacheSys)
+	m.memory["MCacheSys"] = Metric{ID: "MCacheSys", MetricType: MetricGauge, Value: &memMetricsMCacheSys, Delta: nil}
+
+	memMetricsMSpanInuse := float64(memMetrics.MSpanInuse)
+	m.memory["MSpanInuse"] = Metric{ID: "MSpanInuse", MetricType: MetricGauge, Value: &memMetricsMSpanInuse, Delta: nil}
+
+	memMetricsMSpanSys := float64(memMetrics.MSpanSys)
+	m.memory["MSpanSys"] = Metric{ID: "MSpanSys", MetricType: MetricGauge, Value: &memMetricsMSpanSys, Delta: nil}
+
+	memMetricsMallocs := float64(memMetrics.Mallocs)
+	m.memory["Mallocs"] = Metric{ID: "Mallocs", MetricType: MetricGauge, Value: &memMetricsMallocs, Delta: nil}
+
+	memMetricsNextGC := float64(memMetrics.NextGC)
+	m.memory["NextGC"] = Metric{ID: "NextGC", MetricType: MetricGauge, Value: &memMetricsNextGC, Delta: nil}
+
+	memMetricsNumForcedGC := float64(memMetrics.NumForcedGC)
+	m.memory["NumForcedGC"] = Metric{ID: "NumForcedGC", MetricType: MetricGauge, Value: &memMetricsNumForcedGC, Delta: nil}
+
+	memMetricsNumGC := float64(memMetrics.NumGC)
+	m.memory["NumGC"] = Metric{ID: "NumGC", MetricType: MetricGauge, Value: &memMetricsNumGC, Delta: nil}
+
+	memMetricsOtherSys := float64(memMetrics.OtherSys)
+	m.memory["OtherSys"] = Metric{ID: "OtherSys", MetricType: MetricGauge, Value: &memMetricsOtherSys, Delta: nil}
+
+	memMetricsPauseTotalNs := float64(memMetrics.PauseTotalNs)
+	m.memory["PauseTotalNs"] = Metric{ID: "PauseTotalNs", MetricType: MetricGauge, Value: &memMetricsPauseTotalNs, Delta: nil}
+
+	memMetricsStackInuse := float64(memMetrics.StackInuse)
+	m.memory["StackInuse"] = Metric{ID: "StackInuse", MetricType: MetricGauge, Value: &memMetricsStackInuse, Delta: nil}
+
+	memMetricsStackSys := float64(memMetrics.StackSys)
+	m.memory["StackSys"] = Metric{ID: "StackSys", MetricType: MetricGauge, Value: &memMetricsStackSys, Delta: nil}
+
+	memMetricsSys := float64(memMetrics.Sys)
+	m.memory["Sys"] = Metric{ID: "Sys", MetricType: MetricGauge, Value: &memMetricsSys, Delta: nil}
+
+	memMetricsTotalAlloc := float64(memMetrics.TotalAlloc)
+	m.memory["TotalAlloc"] = Metric{ID: "TotalAlloc", MetricType: MetricGauge, Value: &memMetricsTotalAlloc, Delta: nil}
+
+	randomValue := float64(rand.Int()) //nolint:gosec // i know
+	m.memory["RandomValue"] = Metric{ID: "RandomValue", MetricType: MetricGauge, Value: &randomValue, Delta: nil}
 }
 
 func (m *MetricsStore) Report(cfg config.Producer) error {
@@ -99,7 +159,7 @@ func (m *MetricsStore) Report(cfg config.Producer) error {
 		return fmt.Errorf("reporting json metrics: %w", err)
 	}
 
-	m.PollCount.Value = 0
+	delete(m.memory, "PollCount")
 
 	return nil
 }
@@ -127,74 +187,43 @@ func (m *MetricsStore) reportJSON(cfg config.Producer) error {
 }
 
 func (m *MetricsStore) prepareURLs(cfg config.Producer) ([]string, error) {
-	var err error
-	urls := make([]string, 0, len(m.Gauges)+1)
+	urls := make([]string, 0, len(m.memory))
 
-	for _, metric := range m.Gauges {
-		urlGauge, errGauge := url.JoinPath(baseProtocol+cfg.Address.String(), "update", "gauge", metric.Name, strconv.FormatFloat(metric.Value, 'f', -1, 64))
-		if errGauge != nil {
-			err = errors.Join(err, errGauge)
+	for _, metric := range m.memory {
+		var err error
+		var urlMetric string
+
+		switch metric.MetricType {
+		case MetricCounter:
+			urlMetric, err = url.JoinPath(baseProtocol+cfg.Address.String(), "update", metric.MetricType, metric.ID, strconv.FormatInt(*metric.Delta, 10))
+			if err != nil {
+				return nil, fmt.Errorf("prepare urls: %w", err)
+			}
+		case MetricGauge:
+			urlMetric, err = url.JoinPath(baseProtocol+cfg.Address.String(), "update", metric.MetricType, metric.ID, strconv.FormatFloat(*metric.Value, 'f', -1, 64))
+			if err != nil {
+				return nil, fmt.Errorf("prepare urls: %w", err)
+			}
+		default:
+			return nil, ErrUnknownMetricType
 		}
 
-		urls = append(urls, urlGauge)
-	}
-
-	urlCounter, errCounter := url.JoinPath(baseProtocol+cfg.Address.String(), "update", "counter", m.PollCount.Name, strconv.FormatInt(m.PollCount.Value, 10))
-	if errCounter != nil {
-		err = errors.Join(err, errCounter)
-	}
-
-	urls = append(urls, urlCounter)
-
-	if err != nil {
-		return nil, err
+		urls = append(urls, urlMetric)
 	}
 
 	return urls, nil
 }
 
 func (m *MetricsStore) prepareJSONs() ([][]byte, error) {
-	type Metric struct {
-		ID    string   `json:"id"`
-		MType string   `json:"type"`
-		Delta *int64   `json:"delta,omitempty"`
-		Value *float64 `json:"value,omitempty"`
-	}
+	jsons := make([][]byte, 0, len(m.memory))
 
-	var err error
-	jsons := make([][]byte, 0, len(m.Gauges)+1)
-
-	for _, metric := range m.Gauges {
-		gauge := Metric{
-			ID:    metric.Name,
-			MType: "gauge",
-			Delta: nil,
-			Value: &metric.Value,
-		}
-		jsonGauge, errGauge := json.Marshal(gauge)
-		if errGauge != nil {
-			err = errors.Join(err, errGauge)
+	for _, metric := range m.memory {
+		jsonGauge, err := json.Marshal(metric)
+		if err != nil {
+			return nil, fmt.Errorf("prepare jsons: %w", err)
 		}
 
 		jsons = append(jsons, jsonGauge)
-	}
-
-	counter := Metric{
-		ID:    m.PollCount.Name,
-		MType: "counter",
-		Delta: &m.PollCount.Value,
-		Value: nil,
-	}
-
-	jsonCounter, errCounter := json.Marshal(counter)
-	if errCounter != nil {
-		err = errors.Join(err, errCounter)
-	}
-
-	jsons = append(jsons, jsonCounter)
-
-	if err != nil {
-		return nil, err
 	}
 
 	return jsons, nil
@@ -279,7 +308,7 @@ func (m *MetricsStore) sendRequestJSON(cfg config.Producer, jsons [][]byte) {
 		if err != nil {
 			log.Error("Failed to compress json",
 				log.ErrAttr(err),
-				log.StringAttr("url", string(jsonMetric)))
+				log.JSONAttr("url", jsonMetric))
 
 			continue
 		}

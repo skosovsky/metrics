@@ -25,7 +25,9 @@ func main() {
 
 	log.Info("config",
 		log.StringAttr("address", string(cfg.Consumer.Address)),
-	)
+		log.Uint64Attr("store interval", cfg.Store.StoreInterval),
+		log.StringAttr("filepath", cfg.Store.FileStoragePath),
+		log.BoolAttr("should restore", cfg.Store.ShouldRestore))
 
 	err = consumer.Run(cfg)
 	if err != nil {

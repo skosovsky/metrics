@@ -68,24 +68,10 @@ func LoadConsumerEnv() {
 func setConsumerEnvDefault() {
 	var cfg ConsumerConfig
 	cfg.App.Mode = testMode
-	cfg.Store.DBDriver = "memory"
-	cfg.Store.DBAddress = "map"
 
 	err := os.Setenv("APP_MODE", cfg.App.Mode)
 	if err != nil {
 		log.Error("Error setting APP_MODE",
-			log.ErrAttr(err))
-	}
-
-	err = os.Setenv("DB_DRIVER", cfg.Store.DBDriver)
-	if err != nil {
-		log.Error("Error setting DB_DRIVER",
-			log.ErrAttr(err))
-	}
-
-	err = os.Setenv("DB_ADDRESS", cfg.Store.DBAddress)
-	if err != nil {
-		log.Error("Error setting DB_ADDRESS",
 			log.ErrAttr(err))
 	}
 

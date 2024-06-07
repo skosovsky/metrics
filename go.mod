@@ -1,6 +1,6 @@
 module metrics
 
-go 1.22.3
+go 1.22.4
 
 require (
 	github.com/caarlos0/env/v11 v11.0.0
