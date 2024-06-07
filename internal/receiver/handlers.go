@@ -1,16 +1,31 @@
 package receiver
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 
 	"metrics/internal/log"
+	"metrics/internal/receiver/internal/mux"
 	"metrics/internal/receiver/internal/service"
 )
+
+const (
+	metricCounter = "counter"
+	metricGauge   = "gauge"
+)
+
+type Metric struct {
+	ID    string   `json:"id"              validate:"required"`
+	MType string   `json:"type"            validate:"required,oneof=gauge counter"`
+	Delta *int64   `json:"delta,omitempty"`
+	Value *float64 `json:"value,omitempty"`
+}
 
 type Handler struct {
 	service service.Receiver
@@ -21,32 +36,91 @@ func NewHandler(service service.Receiver) Handler {
 }
 
 func (h Handler) InitRoutes() http.Handler {
-	router := chi.NewRouter()
+	router := mux.NewRouter()
 
-	router.Post("/update/{kind}/{name}/{value}", WithLogging(h.AddMetric))
-	router.Get("/value/{kind}/{name}", WithLogging(h.GetMetric))
-	router.Get("/", WithLogging(h.GetAllMetrics))
+	router.Use(WithLogging)
+
+	router.Post("/", h.BadRequest)
+	router.Post("/update/{$}", h.AddMetricJSON)
+	router.Post("/update/{kind}/{name}/{value}", h.AddMetric)
+	router.Post("/value/{$}", h.GetMetricJSON)
+	router.Get("/value/{kind}/{name}", h.GetMetric)
+	router.Get("/", h.GetAllMetrics)
 
 	return router
 }
 
-func (h Handler) AddMetric(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+func (h Handler) BadRequest(w http.ResponseWriter, _ *http.Request) {
+	http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+}
+
+func (h Handler) AddMetricJSON(w http.ResponseWriter, r *http.Request) {
+	var metric Metric
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Error("error writing response", //nolint:contextcheck // false positive
+			log.ErrAttr(err))
+
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 		return
 	}
 
-	kind := chi.URLParam(r, "kind")
+	if len(body) == 0 {
+		log.Debug("empty body") //nolint:contextcheck // false positive
 
-	name := chi.URLParam(r, "name")
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
+		return
+	}
+
+	err = json.Unmarshal(body, &metric)
+	if err != nil {
+		log.Debug("error decode to json", //nolint:contextcheck // false positive
+			log.ErrAttr(err))
+
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
+		return
+	}
+
+	switch metric.MType {
+	case metricCounter:
+		_ = h.service.AddCounter(metric.ID, *metric.Delta)
+	case metricGauge:
+		_ = h.service.AddGauge(metric.ID, *metric.Value)
+	default:
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+
+	err = json.NewEncoder(w).Encode(metric)
+	if err != nil {
+		log.Error("error encode to json", //nolint:contextcheck // false positive
+			log.ErrAttr(err))
+
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
+		return
+	}
+}
+
+func (h Handler) AddMetric(w http.ResponseWriter, r *http.Request) {
+	kind := r.PathValue("kind")
+
+	name := r.PathValue("name")
 	if name == "" {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 
 		return
 	}
 
-	valueString := chi.URLParam(r, "value")
+	valueString := r.PathValue("value")
 	if valueString == "" {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 
@@ -54,7 +128,7 @@ func (h Handler) AddMetric(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch kind {
-	case "counter":
+	case metricCounter:
 		value, err := strconv.ParseInt(valueString, 10, 64)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
@@ -64,7 +138,7 @@ func (h Handler) AddMetric(w http.ResponseWriter, r *http.Request) {
 
 		_ = h.service.AddCounter(name, value)
 
-	case "gauge":
+	case metricGauge:
 		value, err := strconv.ParseFloat(valueString, 64)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
@@ -85,15 +159,9 @@ func (h Handler) AddMetric(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	kind := r.PathValue("kind")
 
-		return
-	}
-
-	kind := chi.URLParam(r, "kind")
-
-	name := chi.URLParam(r, "name")
+	name := r.PathValue("name")
 	if name == "" {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 
@@ -101,7 +169,7 @@ func (h Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch kind {
-	case "counter":
+	case metricCounter:
 		counter, err := h.service.GetCounter(name)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
@@ -122,7 +190,7 @@ func (h Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-	case "gauge":
+	case metricGauge:
 		gauge, err := h.service.GetGauge(name)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
@@ -150,13 +218,109 @@ func (h Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h Handler) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+func (h Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) { //nolint:funlen // agree
+	var metric Metric
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Error("error writing response", //nolint:contextcheck // false positive
+			log.ErrAttr(err))
+
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 		return
 	}
 
+	if len(body) == 0 {
+		log.Debug("empty body") //nolint:contextcheck // false positive
+
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
+		return
+	}
+
+	err = json.Unmarshal(body, &metric)
+	if err != nil {
+		log.Debug("error decode to json", //nolint:contextcheck // false positive
+			log.ErrAttr(err))
+
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
+		return
+	}
+
+	defer func(Body io.ReadCloser) { //nolint:contextcheck // false positive
+		err = Body.Close()
+		if err != nil {
+			log.Error("error close body",
+				log.ErrAttr(err))
+		}
+	}(r.Body)
+
+	if !h.IsValidRequest(metric) {
+		log.Debug("invalid requestBody", //nolint:contextcheck // false positive
+			log.StringAttr("metric", fmt.Sprint(metric)))
+
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
+		return
+	}
+
+	switch metric.MType {
+	case metricCounter:
+		var counter service.Counter
+		counter, err = h.service.GetCounter(metric.ID)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+
+			return
+		}
+
+		metric.Delta = &counter.Value
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+
+		err = json.NewEncoder(w).Encode(metric)
+		if err != nil {
+			log.Error("error encode to json", //nolint:contextcheck // false positive
+				log.ErrAttr(err))
+
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
+			return
+		}
+	case metricGauge:
+		var gauge service.Gauge
+		gauge, err = h.service.GetGauge(metric.ID)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+
+			return
+		}
+
+		metric.Value = &gauge.Value
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+
+		err = json.NewEncoder(w).Encode(metric)
+		if err != nil {
+			log.Error("error encode to json", //nolint:contextcheck // false positive
+				log.ErrAttr(err))
+
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
+			return
+		}
+	default:
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
+		return
+	}
+}
+
+func (h Handler) GetAllMetrics(w http.ResponseWriter, _ *http.Request) {
 	var answer string
 
 	counters := h.service.GetAllCounters()
@@ -177,6 +341,9 @@ func (h Handler) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 
 	answer += h.prepareAllGauges(gauges)
 
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+
 	_, err := io.WriteString(w, answer)
 	if err != nil {
 		log.Error("Error writing response", //nolint:contextcheck // no ctx
@@ -185,9 +352,6 @@ func (h Handler) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
-
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
 }
 
 func (Handler) prepareAllCounters(counters []service.Counter) string {
@@ -214,4 +378,12 @@ func (Handler) prepareAllGauges(gauges []service.Gauge) string {
 	}
 
 	return answer.String()
+}
+
+func (Handler) IsValidRequest(metric Metric) bool {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	err := validate.Struct(metric)
+
+	return err == nil
 }
