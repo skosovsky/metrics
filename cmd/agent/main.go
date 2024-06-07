@@ -3,13 +3,13 @@ package main
 import (
 	"metrics/config"
 	"metrics/internal/log"
-	"metrics/internal/transmitter"
+	"metrics/internal/producer"
 )
 
 func main() {
 	log.Prepare()
 
-	config.LoadTransmitterEnv()
+	config.LoadProducerEnv()
 
 	err := config.LogAppInfo()
 	if err != nil {
@@ -17,17 +17,17 @@ func main() {
 			log.ErrAttr(err))
 	}
 
-	cfg, err := config.NewTransmitterConfig()
+	cfg, err := config.NewProducerConfig()
 	if err != nil {
 		log.Fatal("cfg",
 			log.ErrAttr(err))
 	}
 
 	log.Info("config",
-		log.StringAttr("address", string(cfg.Transmitter.Address)),
-		log.IntAttr("poll interval", cfg.Transmitter.PollInterval),
-		log.IntAttr("report interval", cfg.Transmitter.ReportInterval),
+		log.StringAttr("address", string(cfg.Producer.Address)),
+		log.IntAttr("poll interval", cfg.Producer.PollInterval),
+		log.IntAttr("report interval", cfg.Producer.ReportInterval),
 	)
 
-	transmitter.Run(cfg)
+	producer.Run(cfg)
 }

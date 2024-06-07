@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"metrics/internal/receiver/internal/service"
+	"metrics/internal/consumer/internal/service"
 )
 
 var (

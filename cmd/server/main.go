@@ -2,14 +2,14 @@ package main
 
 import (
 	"metrics/config"
+	"metrics/internal/consumer"
 	"metrics/internal/log"
-	"metrics/internal/receiver"
 )
 
 func main() {
 	log.Prepare()
 
-	config.LoadReceiverEnv()
+	config.LoadConsumerEnv()
 
 	err := config.LogAppInfo()
 	if err != nil {
@@ -17,19 +17,19 @@ func main() {
 			log.ErrAttr(err))
 	}
 
-	cfg, err := config.NewReceiverConfig()
+	cfg, err := config.NewConsumerConfig()
 	if err != nil {
 		log.Fatal("cfg",
 			log.ErrAttr(err))
 	}
 
 	log.Info("config",
-		log.StringAttr("address", string(cfg.Receiver.Address)),
+		log.StringAttr("address", string(cfg.Consumer.Address)),
 	)
 
-	err = receiver.Run(cfg)
+	err = consumer.Run(cfg)
 	if err != nil {
-		log.Fatal("receiver run error",
+		log.Fatal("consumer run error",
 			log.ErrAttr(err))
 	}
 }

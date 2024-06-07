@@ -1,4 +1,4 @@
-package receiver
+package consumer
 
 import (
 	"context"
@@ -17,9 +17,9 @@ const (
 	IdleTimeout  = 60 * time.Second
 )
 
-func RunServer(_ context.Context, handler Handler, cfg config.ReceiverConfig) error {
+func RunServer(_ context.Context, handler Handler, cfg config.ConsumerConfig) error {
 	server := http.Server{
-		Addr:                         string(cfg.Receiver.Address),
+		Addr:                         string(cfg.Consumer.Address),
 		Handler:                      handler.InitRoutes(),
 		DisableGeneralOptionsHandler: false,
 		TLSConfig:                    nil,
@@ -36,7 +36,7 @@ func RunServer(_ context.Context, handler Handler, cfg config.ReceiverConfig) er
 	}
 
 	log.Info("server starting", //nolint:contextcheck // no ctx
-		log.StringAttr("host:port", string(cfg.Receiver.Address)))
+		log.StringAttr("host:port", string(cfg.Consumer.Address)))
 
 	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("server error: %w", err)

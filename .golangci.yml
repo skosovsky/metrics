@@ -150,7 +150,7 @@ linters-settings:
         # Default: true
         paramsOnly: false
       underef:
-        # Whether to skip (*x).method() calls where x is a pointer receiver.
+        # Whether to skip (*x).method() calls where x is a pointer consumer.
         # Default: true
         skipRecvDeref: false
 

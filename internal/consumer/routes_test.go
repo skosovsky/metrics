@@ -1,4 +1,4 @@
-package receiver_test
+package consumer_test
 
 import (
 	"net/http"
@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"metrics/config"
-	"metrics/internal/receiver"
-	"metrics/internal/receiver/internal/service"
-	"metrics/internal/receiver/internal/store"
+	"metrics/internal/consumer"
+	"metrics/internal/consumer/internal/service"
+	"metrics/internal/consumer/internal/store"
 )
 
 func TestRouting(t *testing.T) {
@@ -105,10 +105,10 @@ func TestRouting(t *testing.T) {
 		},
 	}
 
-	var cfg config.ReceiverConfig
+	var cfg config.ConsumerConfig
 	db := store.NewDummyStore()
-	receiverService := service.NewReceiverService(db, cfg)
-	handler := receiver.NewHandler(receiverService)
+	consumerService := service.NewConsumerService(db, cfg)
+	handler := consumer.NewHandler(consumerService)
 
 	server := httptest.NewServer(handler.InitRoutes())
 
